@@ -11,7 +11,6 @@
  * date:    2024-08-08
  */
 use tauri::Manager;
-use tauri_plugin_aptabase::EventTracker;
 
 mod t_ai;
 mod t_ai_png;
@@ -48,15 +47,6 @@ async fn main() {
 
     let builder = tauri::Builder::default();
     let builder = t_protocol::register_protocols(builder);
-
-    let aptabase_enabled = option_env!("APTABASE_KEY")
-        .filter(|k| !k.is_empty())
-        .is_some();
-
-    let builder = match option_env!("APTABASE_KEY").filter(|k| !k.is_empty()) {
-        Some(key) => builder.plugin(tauri_plugin_aptabase::Builder::new(key).build()),
-        None => builder,
-    };
 
     let run_result = builder
         .plugin(tauri_plugin_window_state::Builder::default().build()) // macOS: ~/Library/Application Support/{APP_NAME}/window-state.json
@@ -381,6 +371,7 @@ async fn main() {
             t_cmds::get_persons_page,
             t_cmds::rename_person,
             t_cmds::delete_person,
+            t_cmds::merge_persons,
             t_cmds::get_faces_for_file,
             // dedup
             t_cmds::dedup_start_scan,
@@ -413,18 +404,6 @@ async fn main() {
     match run_result {
         Ok(app) => {
             app.run(move |app_handle, event| match event {
-                tauri::RunEvent::Ready => {
-                    if aptabase_enabled {
-                        let _ = app_handle.track_event("app_started", None);
-                    }
-                }
-                tauri::RunEvent::Exit { .. } => {
-                    if aptabase_enabled {
-                        let _ = app_handle.track_event("app_exited", None);
-                    }
-                    app_handle.flush_events_blocking();
-                }
-
                 // macOS: clicking the Dock icon of a running app reopens it.
                 // When the main window is hidden (closed-to-hide), show it again.
                 #[cfg(target_os = "macos")]

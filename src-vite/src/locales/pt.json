@@ -655,7 +655,8 @@
       "reset_index": "Redefinir índice",
       "unnamed": "Pessoa sem nome",
       "search": "Pesquisar pessoas",
-      "show_more": "Mostrar mais ({loaded}/{total})"
+      "show_more": "Mostrar mais ({loaded}/{total})",
+      "merge": "Mesclar em..."
     },
     "tag": {
       "add": "Adicionar tag...",
@@ -963,6 +964,12 @@
       "overwrite": "Sobrescrever",
       "save_as_new": "Salvar como",
       "overwrite_confirm": "Sobrescrever arquivo original? Irreversível."
+    },
+    "merge_person": {
+      "title": "Mesclar pessoa",
+      "content": "Mesclar '{source}' em qual pessoa?",
+      "hint": "Todos os rostos de '{source}' serão movidos para a pessoa selecionada.",
+      "ok": "Mesclar"
     }
   },
   "file_info": {

@@ -2002,6 +2002,17 @@ export async function deletePerson(personId) {
   return null;
 }
 
+// merge a person into another person (all faces of source move to target)
+export async function mergePersons(targetId, sourceId) {
+  try {
+    const result = await invoke('merge_persons', { targetId, sourceId });
+    return result;
+  } catch (error) {
+    console.error('Failed to merge persons:', error);
+  }
+  return null;
+}
+
 // get faces for a file
 export async function getFacesForFile(fileId) {
   try {

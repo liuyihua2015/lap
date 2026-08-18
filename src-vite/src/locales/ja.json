@@ -655,7 +655,8 @@
       "reset_index": "インデックスをリセット",
       "unnamed": "名前のない人物",
       "search": "人物を検索",
-      "show_more": "さらに表示（{loaded}/{total}）"
+      "show_more": "さらに表示（{loaded}/{total}）",
+      "merge": "マージ先を選択..."
     },
     "tag": {
       "add": "タグを追加...",
@@ -963,6 +964,12 @@
       "overwrite": "上書き",
       "save_as_new": "名前を付けて保存",
       "overwrite_confirm": "元のファイルを上書きしますか？この操作は取り消せません。"
+    },
+    "merge_person": {
+      "title": "人物をマージ",
+      "content": "'{source}' をどの人物にマージしますか？",
+      "hint": "'{source}' のすべての顔が選択した人物に移動します。",
+      "ok": "マージ"
     }
   },
   "file_info": {

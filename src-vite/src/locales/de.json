@@ -655,7 +655,8 @@
       "reset_index": "Index zurücksetzen",
       "unnamed": "Unbenannte Person",
       "search": "Personen suchen",
-      "show_more": "Mehr anzeigen ({loaded}/{total})"
+      "show_more": "Mehr anzeigen ({loaded}/{total})",
+      "merge": "Zusammenführen mit..."
     },
     "tag": {
       "add": "Tag hinzufügen...",
@@ -963,6 +964,12 @@
       "overwrite": "Überschreiben",
       "save_as_new": "Speichern unter",
       "overwrite_confirm": "Originaldatei überschreiben? Kann nicht rückgängig gemacht werden."
+    },
+    "merge_person": {
+      "title": "Person zusammenführen",
+      "content": "'{source}' in welche Person zusammenführen?",
+      "hint": "Alle Gesichter von '{source}' werden zur ausgewählten Person verschoben.",
+      "ok": "Zusammenführen"
     }
   },
   "file_info": {

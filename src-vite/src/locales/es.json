@@ -655,7 +655,8 @@
       "reset_index": "Reiniciar índice",
       "unnamed": "Persona sin nombre",
       "search": "Buscar personas",
-      "show_more": "Mostrar más ({loaded}/{total})"
+      "show_more": "Mostrar más ({loaded}/{total})",
+      "merge": "Combinar con..."
     },
     "tag": {
       "add": "Añadir etiqueta...",
@@ -963,6 +964,12 @@
       "overwrite": "Sobrescribir",
       "save_as_new": "Guardar como",
       "overwrite_confirm": "¿Sobrescribir archivo original? No se puede deshacer."
+    },
+    "merge_person": {
+      "title": "Combinar persona",
+      "content": "¿Combinar '{source}' con qué persona?",
+      "hint": "Todas las caras de '{source}' se moverán a la persona seleccionada.",
+      "ok": "Combinar"
     }
   },
   "file_info": {

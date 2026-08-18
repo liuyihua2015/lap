@@ -7732,6 +7732,114 @@ impl Person {
         Ok(result)
     }
 
+    /// Merge `source_id` into `target_id` in one transaction.
+    ///
+    /// All faces of `source` are reassigned to `target`. The target keeps its
+    /// own name when it has one; otherwise it inherits the source's name.
+    /// The source person is then deleted and the target thumbnail refreshed.
+    /// Returns the number of faces that were moved.
+    pub fn merge(target_id: i64, source_id: i64) -> Result<usize, String> {
+        if target_id == source_id {
+            return Err("Cannot merge a person into itself".to_string());
+        }
+        let mut conn = open_conn()?;
+        let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+        // 1. Reassign all faces from source to target
+        let moved = tx
+            .execute(
+                "UPDATE faces SET person_id = ?1 WHERE person_id = ?2",
+                params![target_id, source_id],
+            )
+            .map_err(|e| e.to_string())?;
+
+        // 2. If the target has no name, inherit the source's name
+        let target_name: Option<String> = tx
+            .query_row(
+                "SELECT name FROM persons WHERE id = ?1",
+                params![target_id],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|e| e.to_string())?
+            .flatten();
+        if target_name.as_deref().unwrap_or("").is_empty() {
+            let source_name: Option<String> = tx
+                .query_row(
+                    "SELECT name FROM persons WHERE id = ?1",
+                    params![source_id],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(|e| e.to_string())?
+                .flatten();
+            if let Some(name) = source_name {
+                if !name.is_empty() {
+                    tx.execute(
+                        "UPDATE persons SET name = ?1 WHERE id = ?2",
+                        params![name, target_id],
+                    )
+                    .map_err(|e| e.to_string())?;
+                }
+            }
+        }
+
+        // 3. If the target has no cover face yet, adopt the source's cover face
+        //    (it now points at a face that belongs to the target after step 1).
+        let target_cover: Option<i64> = tx
+            .query_row(
+                "SELECT cover_face_id FROM persons WHERE id = ?1",
+                params![target_id],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|e| e.to_string())?
+            .flatten();
+        if target_cover.is_none() {
+            let source_cover: Option<i64> = tx
+                .query_row(
+                    "SELECT cover_face_id FROM persons WHERE id = ?1",
+                    params![source_id],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(|e| e.to_string())?
+                .flatten();
+            if let Some(cover) = source_cover {
+                let cover_belongs: bool = tx
+                    .query_row(
+                        "SELECT EXISTS(SELECT 1 FROM faces WHERE id = ?1 AND person_id = ?2)",
+                        params![cover, target_id],
+                        |row| row.get(0),
+                    )
+                    .unwrap_or(false);
+                if cover_belongs {
+                    tx.execute(
+                        "UPDATE persons SET cover_face_id = ?1 WHERE id = ?2",
+                        params![cover, target_id],
+                    )
+                    .map_err(|e| e.to_string())?;
+                }
+            }
+        }
+
+        // 4. Delete the source person (faces are already moved, so nothing is orphaned)
+        tx.execute(
+            "DELETE FROM persons WHERE id = ?1",
+            params![source_id],
+        )
+        .map_err(|e| e.to_string())?;
+
+        tx.commit().map_err(|e| e.to_string())?;
+
+        // 5. Refresh the target thumbnail after the commit
+        if let Err(e) = Self::update_thumbnail(target_id) {
+            eprintln!("Failed to refresh merged person thumbnail: {}", e);
+        }
+
+        Ok(moved)
+    }
+
     /// Create a new person (usually from face clustering)
     pub fn create(name: Option<&str>) -> Result<i64, String> {
         let conn = open_conn()?;

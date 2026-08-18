@@ -200,6 +200,60 @@
     @cancel="showResetFacesMsgbox = false"
   />
 
+  <!-- Merge person dialog: pick a target person -->
+  <ModalDialog
+    v-if="showMergeDialog"
+    :title="$t('msgbox.merge_person.title')"
+    :width="440"
+    @cancel="showMergeDialog = false"
+  >
+    <div class="text-sm text-base-content/70 mb-2">
+      {{ $t('msgbox.merge_person.content', { source: mergeSourceName }) }}
+    </div>
+    <div class="text-xs text-base-content/50 mb-3">
+      {{ $t('msgbox.merge_person.hint', { source: mergeSourceName }) }}
+    </div>
+    <div class="h-[340px] overflow-y-auto rounded-box border border-base-content/10">
+      <ul>
+        <li v-for="person in mergeCandidates" :key="person.id">
+          <div
+            :class="[
+              'sidebar-item gap-2',
+              mergeTargetId === person.id ? 'sidebar-item-selected' : 'sidebar-item-hover',
+            ]"
+            @click="mergeTargetId = person.id"
+          >
+            <div class="w-8 h-8 rounded-full overflow-hidden bg-base-300/70 ring-1 ring-base-content/5 shrink-0 flex items-center justify-center">
+              <img
+                v-if="person.thumbnail"
+                :src="'data:image/jpeg;base64,' + person.thumbnail"
+                class="w-full h-full object-cover"
+              />
+              <IconPerson v-else class="w-5 h-5 text-base-content/30" />
+            </div>
+            <span class="sidebar-item-label">{{ getPersonDisplayName(person) }}</span>
+            <span v-if="person.count" class="sidebar-item-count">{{ person.count.toLocaleString() }}</span>
+          </div>
+        </li>
+      </ul>
+      <div v-if="mergeCandidates.length === 0" class="px-3 py-6 text-center text-sm text-base-content/40">
+        {{ $t('tooltip.not_found.person') }}
+      </div>
+    </div>
+    <div class="mt-4 flex justify-end space-x-4">
+      <button class="t-button-default" @click="showMergeDialog = false">
+        {{ $t('msgbox.cancel') }}
+      </button>
+      <button
+        class="t-button-primary"
+        :disabled="mergeTargetId === null"
+        @click="clickMergePerson"
+      >
+        {{ $t('msgbox.merge_person.ok') }}
+      </button>
+    </div>
+  </ModalDialog>
+
   <teleport to="body">
     <transition name="fade">
       <div
@@ -218,7 +272,7 @@
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { config, libConfig } from '@/common/config';
-import { getPersonsPage, renamePerson, deletePerson, indexFaces, cancelFaceIndex, isFaceIndexing, listenFaceIndexProgress, listenFaceIndexFinished, listenClusterProgress, resetFaces, getFaceStats } from '@/common/api';
+import { getPersonsPage, renamePerson, deletePerson, mergePersons, indexFaces, cancelFaceIndex, isFaceIndexing, listenFaceIndexProgress, listenFaceIndexFinished, listenClusterProgress, resetFaces, getFaceStats } from '@/common/api';
 import { 
   IconPerson, 
   IconMore, 
@@ -227,10 +281,12 @@ import {
   IconUpdate,
   IconClose,
   IconSearch,
+  IconLink,
 } from '@/common/icons';
 
 import ContextMenu from '@/components/ContextMenu.vue';
 import MessageBox from '@/components/MessageBox.vue';
+import ModalDialog from '@/components/ModalDialog.vue';
 
 const props = defineProps({
   titlebar: {
@@ -333,6 +389,15 @@ const personPanelMenuItems = computed(() => [
 const showDeletePersonMsgbox = ref(false);
 const showResetFacesMsgbox = ref(false);
 
+// merge person dialog
+const showMergeDialog = ref(false);
+const mergeTargetId = ref<number | null>(null);
+const mergeSourceId = ref<number | null>(null);
+const mergeSourceName = ref('');
+const mergeCandidates = computed(() =>
+  allPersons.value.filter(p => p.id !== mergeSourceId.value),
+);
+
 // more menuitems
 const getMoreMenuItems = () => [
   {
@@ -350,6 +415,18 @@ const getMoreMenuItems = () => [
   },
   { label: "-", action: null },
   {
+    label: localeMsg.value.menu?.person?.merge || 'Merge into...',
+    icon: IconLink,
+    action: () => {
+      if (!selectedPerson.value) return;
+      mergeSourceId.value = selectedPerson.value.id;
+      mergeSourceName.value = getPersonDisplayName(selectedPerson.value);
+      mergeTargetId.value = null;
+      showMergeDialog.value = true;
+    },
+  },
+  { label: "-", action: null },
+  {
     label: localeMsg.value.menu?.person?.delete || 'Delete',
     icon: IconTrash,
     action: () => {
@@ -357,6 +434,24 @@ const getMoreMenuItems = () => [
     },
   },
 ];
+
+// merge the selected person into the chosen target person
+async function clickMergePerson() {
+  if (mergeSourceId.value === null || mergeTargetId.value === null) return;
+  const sourceId = mergeSourceId.value;
+  const targetId = mergeTargetId.value;
+  showMergeDialog.value = false;
+  const moved = await mergePersons(targetId, sourceId);
+  if (moved !== null) {
+    // Reload the list; the merged person disappears and the target count updates
+    await loadPersons();
+    // Keep the surviving (target) person selected
+    const target = allPersons.value.find(p => p.id === targetId);
+    if (target) {
+      selectPerson(target);
+    }
+  }
+}
 
 onMounted(async () => {
   loadPersons();

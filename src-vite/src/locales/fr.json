@@ -655,7 +655,8 @@
       "reset_index": "Réinitialiser index",
       "unnamed": "Personne sans nom",
       "search": "Rechercher des personnes",
-      "show_more": "Afficher plus ({loaded}/{total})"
+      "show_more": "Afficher plus ({loaded}/{total})",
+      "merge": "Fusionner avec..."
     },
     "tag": {
       "add": "Ajouter tag...",
@@ -963,6 +964,12 @@
       "overwrite": "Écraser",
       "save_as_new": "Enregistrer sous",
       "overwrite_confirm": "Écraser le fichier original ? Irréversible."
+    },
+    "merge_person": {
+      "title": "Fusionner la personne",
+      "content": "Fusionner '{source}' dans quelle personne ?",
+      "hint": "Tous les visages de '{source}' seront déplacés vers la personne sélectionnée.",
+      "ok": "Fusionner"
     }
   },
   "file_info": {

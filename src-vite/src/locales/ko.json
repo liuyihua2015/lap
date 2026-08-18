@@ -655,7 +655,8 @@
       "reset_index": "인덱스 초기화",
       "unnamed": "이름 없는 인물",
       "search": "인물 검색",
-      "show_more": "더 보기 ({loaded}/{total})"
+      "show_more": "더 보기 ({loaded}/{total})",
+      "merge": "다음으로 병합..."
     },
     "tag": {
       "add": "태그 추가...",
@@ -963,6 +964,12 @@
       "overwrite": "덮어쓰기",
       "save_as_new": "다른 이름으로 저장",
       "overwrite_confirm": "원본 파일을 덮어쓰시겠습니까? 되돌릴 수 없습니다."
+    },
+    "merge_person": {
+      "title": "인물 병합",
+      "content": "'{source}'을(를) 어떤 인물로 병합할까요?",
+      "hint": "'{source}'의 모든 얼굴이 선택한 인물로 이동합니다.",
+      "ok": "병합"
     }
   },
   "file_info": {

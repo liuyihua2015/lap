@@ -66,6 +66,159 @@ struct Anchor {
     cy: f32,
 }
 
+/// ArcFace / InsightFace standard 5-point alignment template for 112x112 input.
+/// Order: left eye, right eye, nose tip, left mouth corner, right mouth corner.
+const ARCFACE_112_TEMPLATE: [[f32; 2]; 5] = [
+    [38.2946, 51.6963], // left eye
+    [73.5318, 51.5014], // right eye
+    [56.0252, 71.7366], // nose
+    [41.5493, 92.3655], // left mouth corner
+    [70.7299, 92.2041], // right mouth corner
+];
+
+/// Estimate a least-squares 2D affine transform (2x3) mapping `src` points to `dst` points.
+/// Solves dst = M * [src; 1] via the normal equations (same as InsightFace's
+/// estimate_affine_matrix_2d2d). Returns [[a,b,c],[d,e,f]].
+fn estimate_affine_2d(src: &[[f32; 2]], dst: &[[f32; 2]]) -> [[f32; 3]; 2] {
+    let n = src.len();
+    // Normal equations: (A^T A) X = A^T B
+    // A: n x 3 [x, y, 1], X: 3 x 2, B: n x 2
+    let mut ata = [[0.0f32; 3]; 3];
+    let mut atb = [[0.0f32; 2]; 3];
+    for i in 0..n {
+        let (x, y) = (src[i][0], src[i][1]);
+        let (u, v) = (dst[i][0], dst[i][1]);
+        ata[0][0] += x * x;
+        ata[0][1] += x * y;
+        ata[0][2] += x;
+        ata[1][0] += x * y;
+        ata[1][1] += y * y;
+        ata[1][2] += y;
+        ata[2][0] += x;
+        ata[2][1] += y;
+        ata[2][2] += 1.0;
+        atb[0][0] += x * u;
+        atb[0][1] += x * v;
+        atb[1][0] += y * u;
+        atb[1][1] += y * v;
+        atb[2][0] += u;
+        atb[2][1] += v;
+    }
+    // Solve 3x3 system (A^T A) X = A^T B with Gaussian elimination
+    // Augmented matrix [ata | atb]: 3 rows, 5 cols (3 + 2 rhs)
+    let mut m = [[0.0f32; 5]; 3];
+    for r in 0..3 {
+        for c in 0..3 {
+            m[r][c] = ata[r][c];
+        }
+        m[r][3] = atb[r][0];
+        m[r][4] = atb[r][1];
+    }
+    for col in 0..3 {
+        // Partial pivot
+        let mut pivot = col;
+        for r in (col + 1)..3 {
+            if m[r][col].abs() > m[pivot][col].abs() {
+                pivot = r;
+            }
+        }
+        m.swap(col, pivot);
+        let pv = m[col][col];
+        if pv.abs() < 1e-9 {
+            // Degenerate; fall back to identity
+            return [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
+        }
+        for r in (col + 1)..3 {
+            let factor = m[r][col] / pv;
+            for c in col..5 {
+                m[r][c] -= factor * m[col][c];
+            }
+        }
+    }
+    // Back substitution for both RHS columns
+    let mut x = [[0.0f32; 2]; 3];
+    for r in (0..3).rev() {
+        for rhs in 0..2 {
+            let mut s = m[r][3 + rhs];
+            for c in (r + 1)..3 {
+                s -= m[r][c] * x[c][rhs];
+            }
+            x[r][rhs] = s / m[r][r];
+        }
+    }
+    // x[0..3][0] = row 0 (a,b,c); x[0..3][1] = row 1 (d,e,f)
+    [
+        [x[0][0], x[1][0], x[2][0]],
+        [x[0][1], x[1][1], x[2][1]],
+    ]
+}
+
+/// Align a face crop to 112x112 using the 5-point similarity transform
+/// (InsightFace standard). Falls back to plain crop+resize when landmarks
+/// are missing or degenerate.
+fn align_face_112(img: &DynamicImage, landmarks: &[(f32, f32)]) -> DynamicImage {
+    if landmarks.len() >= 5 {
+        let src: Vec<[f32; 2]> = landmarks[..5].iter().map(|&(x, y)| [x, y]).collect();
+        let m = estimate_affine_2d(&src, &ARCFACE_112_TEMPLATE);
+        // Inverse transform for sampling: src = M^-1 * [dst; 1]
+        let (a, b, c) = (m[0][0], m[0][1], m[0][2]);
+        let (d, e, f) = (m[1][0], m[1][1], m[1][2]);
+        let det = a * e - b * d;
+        if det.abs() > 1e-6 {
+            let inv_a = e / det;
+            let inv_b = -b / det;
+            let inv_c = (b * f - e * c) / det;
+            let inv_d = -d / det;
+            let inv_e = a / det;
+            let inv_f = (d * c - a * f) / det;
+
+            let rgb = img.to_rgb8();
+            let (iw, ih) = rgb.dimensions();
+            let mut out = image::RgbImage::new(112, 112);
+            for oy in 0..112u32 {
+                for ox in 0..112u32 {
+                    // Map destination pixel back to source coordinates
+                    let sx = inv_a * ox as f32 + inv_b * oy as f32 + inv_c;
+                    let sy = inv_d * ox as f32 + inv_e * oy as f32 + inv_f;
+                    // Bilinear interpolation
+                    let x0 = sx.floor().max(0.0) as u32;
+                    let y0 = sy.floor().max(0.0) as u32;
+                    let x1 = x0.saturating_add(1);
+                    let y1 = y0.saturating_add(1);
+                    let fx = sx - sx.floor();
+                    let fy = sy - sy.floor();
+                    if x1 >= iw || y1 >= ih {
+                        out.put_pixel(ox, oy, image::Rgb([0, 0, 0]));
+                        continue;
+                    }
+                    let p00 = rgb.get_pixel(x0, y0).0;
+                    let p10 = rgb.get_pixel(x1, y0).0;
+                    let p01 = rgb.get_pixel(x0, y1).0;
+                    let p11 = rgb.get_pixel(x1, y1).0;
+                    let mut px = [0u8; 3];
+                    for ch in 0..3 {
+                        let v = p00[ch] as f32 * (1.0 - fx) * (1.0 - fy)
+                            + p10[ch] as f32 * fx * (1.0 - fy)
+                            + p01[ch] as f32 * (1.0 - fx) * fy
+                            + p11[ch] as f32 * fx * fy;
+                        px[ch] = v.round().clamp(0.0, 255.0) as u8;
+                    }
+                    out.put_pixel(ox, oy, image::Rgb(px));
+                }
+            }
+            return DynamicImage::ImageRgb8(out);
+        }
+    }
+    // Fallback: center crop + resize (old behavior)
+    let target = 112u32;
+    let (iw, ih) = (img.width(), img.height());
+    let side = iw.min(ih);
+    let x = (iw - side) / 2;
+    let y = (ih - side) / 2;
+    img.crop_imm(x, y, side, side)
+        .resize_exact(target, target, image::imageops::FilterType::Triangle)
+}
+
 pub struct FaceEngine {
     detection_model: Option<Session>, // RetinaFace
     embedding_model: Option<Session>, // MobileFaceNet
@@ -239,10 +392,11 @@ impl FaceEngine {
             let confidence_threshold = 0.6;
 
             for (i, &stride) in strides.iter().enumerate() {
-                let (score_idx, box_idx, _) = indices[i];
+                let (score_idx, box_idx, kps_idx) = indices[i];
 
                 let scores_tensor = &outputs[score_idx];
                 let boxes_tensor = &outputs[box_idx];
+                let kps_tensor = &outputs[kps_idx];
 
                 let (_, scores_data) = scores_tensor
                     .try_extract_tensor::<f32>()
@@ -250,6 +404,9 @@ impl FaceEngine {
                 let (_, boxes_data) = boxes_tensor
                     .try_extract_tensor::<f32>()
                     .map_err(|e| format!("Failed stride {} boxes: {}", stride, e))?;
+                let (_, kps_data) = kps_tensor
+                    .try_extract_tensor::<f32>()
+                    .map_err(|e| format!("Failed stride {} kps: {}", stride, e))?;
 
                 let feature_map_w = target_size / stride;
                 let feature_map_h = target_size / stride;
@@ -291,13 +448,24 @@ impl FaceEngine {
                     let original_x2 = x2 * inv_scale_x;
                     let original_y2 = y2 * inv_scale_y;
 
+                    // Decode 5 facial landmarks from kps output (10 values per anchor)
+                    // Same stride-scaled distance decoding as boxes
+                    let mut landmarks = Vec::with_capacity(5);
+                    for k in 0..5 {
+                        let kx =
+                            (anchor.cx + kps_data[j * 10 + k * 2] * stride as f32) * inv_scale_x;
+                        let ky = (anchor.cy + kps_data[j * 10 + k * 2 + 1] * stride as f32)
+                            * inv_scale_y;
+                        landmarks.push((kx, ky));
+                    }
+
                     all_detections.push(FaceBox {
                         x: original_x1,
                         y: original_y1,
                         width: original_x2 - original_x1,
                         height: original_y2 - original_y1,
                         confidence: score,
-                        landmarks: None,
+                        landmarks: Some(landmarks),
                     });
                 }
             }
@@ -346,36 +514,15 @@ impl FaceEngine {
         img: &DynamicImage,
         bbox: &FaceBox,
     ) -> Result<Vec<f32>, String> {
-        // Crop face region with some padding
-        let padding = 0.2;
-        let x = (bbox.x - bbox.width * padding).max(0.0) as u32;
-        let y = (bbox.y - bbox.height * padding).max(0.0) as u32;
-        let w = (bbox.width * (1.0 + 2.0 * padding)) as u32;
-        let h = (bbox.height * (1.0 + 2.0 * padding)) as u32;
-
-        let max_x = (x + w).min(img.width());
-        let max_y = (y + h).min(img.height());
-
-        // Optimize: check if we can reuse the crop or if we need to resize
-        // MobileFaceNet expects 112x112
-        let target_size = 112;
-        let face_crop = img.crop_imm(x, y, max_x - x, max_y - y);
+        // Align face using 5-point landmarks (InsightFace standard) when available.
+        // This produces a consistent 112x112 canonical view, which greatly improves
+        // MobileFaceNet embedding quality vs. a plain bbox crop+resize.
+        let aligned = align_face_112(img, bbox.landmarks.as_deref().unwrap_or(&[]));
         let rgb_buf;
-        let rgb_face = if face_crop.width() == target_size && face_crop.height() == target_size {
-            if let Some(buf) = face_crop.as_rgb8() {
-                buf
-            } else {
-                rgb_buf = face_crop.to_rgb8();
-                &rgb_buf
-            }
+        let rgb_face = if let Some(buf) = aligned.as_rgb8() {
+            buf
         } else {
-            rgb_buf = face_crop
-                .resize_exact(
-                    target_size,
-                    target_size,
-                    image::imageops::FilterType::Triangle,
-                )
-                .into_rgb8();
+            rgb_buf = aligned.to_rgb8();
             &rgb_buf
         };
 
@@ -625,9 +772,11 @@ pub fn run_face_indexing(
     {
         let mut running = status_token.lock().unwrap();
         if *running {
+            eprintln!("[DEBUG] run_face_indexing: already running, returning Err");
             return Err("Face indexing is already running".to_string());
         }
         *running = true;
+        eprintln!("[DEBUG] run_face_indexing: status set to running");
     }
 
     // Reset cancellation flag
@@ -643,6 +792,7 @@ pub fn run_face_indexing(
     }
 
     tauri::async_runtime::spawn(async move {
+        eprintln!("[DEBUG] run_face_indexing: async task started");
         // 1. Initialization
         let reset_status = || {
             if let Ok(mut running) = status_token.lock() {
@@ -654,20 +804,26 @@ pub fn run_face_indexing(
         {
             let mut engine = face_state.0.lock().unwrap();
             if !engine.is_loaded() {
-                if let Err(e) = engine.load_models(&app_handle) {
-                    eprintln!("Failed to load face models: {}", e);
-                    let _ = app_handle.emit(
-                        "face_index_finished",
-                        serde_json::json!({
-                            "total_faces": 0,
-                            "total_persons": 0,
-                            "cancelled": false,
-                            "error": e.to_string()
-                        }),
-                    );
-                    reset_status();
-                    return;
+                eprintln!("[DEBUG] face models not loaded, loading...");
+                match engine.load_models(&app_handle) {
+                    Ok(()) => eprintln!("[DEBUG] face models loaded OK"),
+                    Err(e) => {
+                        eprintln!("Failed to load face models: {}", e);
+                        let _ = app_handle.emit(
+                            "face_index_finished",
+                            serde_json::json!({
+                                "total_faces": 0,
+                                "total_persons": 0,
+                                "cancelled": false,
+                                "error": e.to_string()
+                            }),
+                        );
+                        reset_status();
+                        return;
+                    }
                 }
+            } else {
+                eprintln!("[DEBUG] face models already loaded");
             }
         }
 
@@ -681,7 +837,10 @@ pub fn run_face_indexing(
         };
 
         let files = match t_sqlite::Face::get_unprocessed_image_files() {
-            Ok(f) => f,
+            Ok(f) => {
+                eprintln!("[DEBUG] unprocessed image files: {}", f.len());
+                f
+            }
             Err(e) => {
                 eprintln!("Failed to get unprocessed files: {}", e);
                 let _ = app_handle.emit(

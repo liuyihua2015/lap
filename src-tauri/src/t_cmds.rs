@@ -2587,6 +2587,7 @@ pub fn index_faces(
     progress_state: State<t_face::FaceIndexProgressState>,
     cluster_epsilon: Option<f32>,
 ) -> Result<(), String> {
+    eprintln!("[DEBUG] index_faces command invoked, epsilon={:?}", cluster_epsilon);
     t_face::run_face_indexing(
         app_handle,
         (*state).clone(),
@@ -2663,6 +2664,13 @@ pub fn rename_person(person_id: i64, name: String) -> Result<usize, String> {
 #[tauri::command]
 pub fn delete_person(person_id: i64) -> Result<usize, String> {
     Person::delete(person_id).map_err(|e| format!("Error while deleting person: {}", e))
+}
+
+/// merge a person into another person (all faces of source move to target)
+#[tauri::command]
+pub fn merge_persons(target_id: i64, source_id: i64) -> Result<usize, String> {
+    Person::merge(target_id, source_id)
+        .map_err(|e| format!("Error while merging persons: {}", e))
 }
 
 /// get faces for a file

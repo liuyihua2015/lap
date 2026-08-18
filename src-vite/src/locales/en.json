@@ -655,7 +655,8 @@
       "reset_index": "Reset index",
       "unnamed": "Unnamed person",
       "search": "Search people",
-      "show_more": "Show more ({loaded}/{total})"
+      "show_more": "Show more ({loaded}/{total})",
+      "merge": "Merge into..."
     },
     "tag": {
       "add": "Add tag...",
@@ -963,6 +964,12 @@
       "overwrite": "Overwrite",
       "save_as_new": "Save as",
       "overwrite_confirm": "Are you sure you want to overwrite the original file? This action cannot be undone."
+    },
+    "merge_person": {
+      "title": "Merge person",
+      "content": "Merge '{source}' into which person?",
+      "hint": "All faces of '{source}' will move to the selected person.",
+      "ok": "Merge"
     }
   },
   "file_info": {

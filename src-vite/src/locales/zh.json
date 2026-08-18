@@ -655,7 +655,8 @@
       "reset_index": "重置索引",
       "unnamed": "未命名人物",
       "search": "搜索人物",
-      "show_more": "显示更多（{loaded}/{total}）"
+      "show_more": "显示更多（{loaded}/{total}）",
+      "merge": "合并到..."
     },
     "tag": {
       "add": "添加标签...",
@@ -963,6 +964,12 @@
       "overwrite": "覆盖",
       "save_as_new": "另存为",
       "overwrite_confirm": "确定覆盖现有文件吗？该操作无法撤销。"
+    },
+    "merge_person": {
+      "title": "合并人物",
+      "content": "将 '{source}' 合并到哪个人物？",
+      "hint": "'{source}' 的所有人脸将移动到所选人物。",
+      "ok": "合并"
     }
   },
   "file_info": {
