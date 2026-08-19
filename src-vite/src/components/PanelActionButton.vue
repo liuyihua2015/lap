@@ -1,15 +1,16 @@
 <template>
   <button
     type="button"
-    class="inline-flex px-2 h-8 min-h-0 items-center gap-1 rounded-box text-xs transition-colors disabled:pointer-events-none"
-    :class="buttonClass"
+    class="inline-flex min-h-0 items-center rounded-box transition-colors disabled:pointer-events-none"
+    :class="[large ? 'px-2.5 h-9 gap-1.5 text-sm' : 'px-2 h-8 gap-1 text-xs', buttonClass]"
     :disabled="disabled"
     @click="emit('click', $event)"
   >
     <component
       v-if="icon"
       :is="icon"
-      class="h-3.5 w-3.5 shrink-0"
+      class="shrink-0"
+      :class="large ? 'h-4 w-4' : 'h-3.5 w-3.5'"
     />
     <span class="whitespace-nowrap">
       <slot />
@@ -26,11 +27,13 @@ const props = withDefaults(defineProps<{
   danger?: boolean;
   primary?: boolean;
   selected?: boolean;
+  large?: boolean;
 }>(), {
   disabled: false,
   danger: false,
   primary: false,
   selected: false,
+  large: false,
 });
 
 const emit = defineEmits<{

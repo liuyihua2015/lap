@@ -129,15 +129,16 @@
             </div>
             <div class="flex flex-wrap gap-1">
               <PanelActionButton
+                large
                 :icon="isAllSimilarItemsSelected(activeSimilarGroup.id) ? IconUnChecked : IconChecked"
                 @click="selectAllSimilarItems(activeSimilarGroup)"
               >
                 {{ isAllSimilarItemsSelected(activeSimilarGroup.id) ? $t('menu.select.none') : $t('menu.select.all') }}
               </PanelActionButton>
-              <PanelActionButton :icon="selectedSimilarCount >= 2 ? IconSplitOn4 : IconSplitOn" :disabled="selectedSimilarCount === 0 || !hasSimilarKeep" @click="compareSelectedSimilarPhotos">
+              <PanelActionButton large :icon="selectedSimilarCount >= 2 ? IconSplitOn4 : IconSplitOn" :disabled="selectedSimilarCount === 0 || !hasSimilarKeep" @click="compareSelectedSimilarPhotos">
                 {{ $t('info_panel.dedup.compare') }}
               </PanelActionButton>
-              <PanelActionButton :icon="IconTrash" :disabled="selectedSimilarCount === 0" danger @click="trashSelectedSimilar(activeSimilarGroup.id, selectedSimilarBytes)">
+              <PanelActionButton large :icon="IconTrash" :disabled="selectedSimilarCount === 0" danger @click="trashSelectedSimilar(activeSimilarGroup.id, selectedSimilarBytes)">
                 {{ $t('info_panel.dedup.delete_selected') }}
               </PanelActionButton>
             </div>
@@ -164,12 +165,12 @@
                   <label v-if="item.is_keep !== 1" class="flex items-center cursor-pointer shrink-0" @click.stop @dblclick.stop>
                     <input
                       type="checkbox"
-                      class="checkbox checkbox-xs checkbox-primary opacity-70"
+                      class="checkbox checkbox-sm checkbox-primary opacity-70"
                       :checked="isSimilarSelected(activeSimilarGroup.id, item.file_id)"
                       @change="toggleSimilarSelected(activeSimilarGroup.id, item.file_id)"
                     />
                   </label>
-                  <div v-else class="w-4 shrink-0"></div>
+                  <div v-else class="w-5 shrink-0"></div>
                   <div class="w-10 h-10 rounded-box overflow-hidden shrink-0">
                     <img v-if="item.file?.thumbnail" :src="item.file.thumbnail" class="w-full h-full object-cover" />
                     <div v-else class="w-full h-full skeleton"></div>
@@ -187,44 +188,44 @@
                       {{ $t('file_info.modified_at') }}: {{ formatTimestamp(item.file.modified_at, $t('format.date_time')) }}
                     </div>
                   </div>
-                  <div class="shrink-0 w-16 min-h-10 flex flex-col items-center justify-center gap-0.5">
+                  <div class="shrink-0 w-20 min-h-12 flex flex-col items-center justify-center gap-1">
                     <button
-                      class="btn btn-ghost btn-xs min-h-0 h-5 w-5 p-0"
+                      class="btn btn-ghost btn-sm min-h-0 h-7 w-7 p-0"
                       :class="item.is_keep === 1 ? 'text-primary' : 'text-base-content/30 hover:text-primary/70'"
                       :title="$t(item.is_keep === 1 ? 'info_panel.dedup.keep_label' : 'info_panel.dedup.unkeep_label')"
                       :aria-label="$t(item.is_keep === 1 ? 'info_panel.dedup.keep_label' : 'info_panel.dedup.unkeep_label')"
                       :aria-current="item.is_keep === 1 ? 'true' : undefined"
                       @click.stop="item.is_keep !== 1 && setSimilarKeep(activeSimilarGroup.id, item.file_id)"
                     >
-                      <component :is="item.is_keep === 1 ? IconLock : IconUnlock" class="w-3.5 h-3.5" />
+                      <component :is="item.is_keep === 1 ? IconLock : IconUnlock" class="w-4.5 h-4.5" />
                     </button>
-                    <div class="flex items-center gap-0.5" @click.stop>
+                    <div class="flex items-center gap-1" @click.stop>
                       <button
-                        class="btn btn-ghost btn-xs min-h-0 h-5 w-5 p-0"
+                        class="btn btn-ghost btn-sm min-h-0 h-7 w-7 p-0"
                         :class="getSimilarCullingIconClass(item.file, 1)"
                         :title="$t('culling.picks')"
                         :aria-label="$t('culling.picks')"
                         @click.stop="setSimilarCullingFlag(item, 1)"
                       >
-                        <IconFlagFilled class="w-3.5 h-3.5" />
+                        <IconFlagFilled class="w-4.5 h-4.5" />
                       </button>
                       <button
-                        class="btn btn-ghost btn-xs min-h-0 h-5 w-5 p-0"
+                        class="btn btn-ghost btn-sm min-h-0 h-7 w-7 p-0"
                         :class="getSimilarCullingIconClass(item.file, 2)"
                         :title="$t('culling.rejected')"
                         :aria-label="$t('culling.rejected')"
                         @click.stop="setSimilarCullingFlag(item, 2)"
                       >
-                        <IconFlagOff class="w-3.5 h-3.5" />
+                        <IconFlagOff class="w-4.5 h-4.5" />
                       </button>
                       <button
-                        class="btn btn-ghost btn-xs min-h-0 h-5 w-5 p-0"
+                        class="btn btn-ghost btn-sm min-h-0 h-7 w-7 p-0"
                         :class="getSimilarCullingIconClass(item.file, 0)"
                         :title="$t('culling.unreviewed')"
                         :aria-label="$t('culling.unreviewed')"
                         @click.stop="setSimilarCullingFlag(item, 0)"
                       >
-                        <IconFlag class="w-3.5 h-3.5" />
+                        <IconFlag class="w-4.5 h-4.5" />
                       </button>
                     </div>
                   </div>
