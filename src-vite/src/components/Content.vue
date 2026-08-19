@@ -413,6 +413,7 @@
             :dedup-collection-id="dedupCollectionId"
             :dedup-file-ids="dedupFileIds"
             @close="config.rightPanel.show = false"
+            @open-similar-group-in-view="handleDedupOpenSimilarGroup"
             @select-file="handleDedupSelectFile"
             @preview-file="handleDedupPreviewFile"
             @trash-selected-duplicates="handleDedupTrashSelectedDuplicates"
@@ -2832,7 +2833,7 @@ function showLoadingContent(requestId: number) {
 }
 
 // Similar Search Mode State
-const tempViewMode = ref<'none' | 'similar' | 'album' | 'person'>('none');
+const tempViewMode = ref<'none' | 'similar' | 'similar-group' | 'album' | 'person'>('none');
 let suppressPersonContextRefresh = false;
 const dedupQueryParams = computed(() => {
   return { ...currentQueryParams.value };
@@ -2900,6 +2901,7 @@ const currentTitleIcon = computed(() => {
       }
       return null;
     case 'similar': return IconPhotoSearch;
+    case 'similar-group': return IconPhotoSearch;
     case 'album': return IconFolderSearch;
     case 'person': return IconPersonSearch;
     default: return null;
@@ -6178,7 +6180,7 @@ async function getImageSearchFileList(
     fileId,
     threshold: thresholdOverride ?? config.imageSearchThresholds[config.settings.imageSearch.thresholdIndex],
     limit: config.settings.imageSearch.limit,
-    fileType: tempViewMode.value === 'similar' ? 0 : Number(config.search.fileType || 0),
+    fileType: (tempViewMode.value === 'similar' || tempViewMode.value === 'similar-group') ? 0 : Number(config.search.fileType || 0),
   };
   currentCollectionId.value = null;
   currentSearchFileIds.value = [];
@@ -6963,6 +6965,9 @@ function exitTempViewMode() {
 function handleTitleClick() {
   switch (tempViewMode.value) {
     case 'similar':
+      exitTempViewMode();
+      break;
+    case 'similar-group':
       exitTempViewMode();
       break;
     case 'person':
@@ -8705,6 +8710,48 @@ async function resolveFileIndexForDedup(fileId: number): Promise<number> {
   return isRealFileItem(fileList.value[position]) ? position : -1;
 }
 
+// Display the full similarity group (all member photos) in the main view as a
+// temporary view. Backing up first lets the top "back" button restore the
+// previous file list via exitTempViewMode().
+const handleDedupOpenSimilarGroup = (group: any) => {
+  if (!group?.items || !Array.isArray(group.items) || group.items.length === 0) return;
+
+  if (tempViewMode.value === 'none') {
+    backupState.value = createViewBackup();
+  }
+
+  currentThumbRequestId++;
+  tempViewMode.value = 'similar-group';
+  showQuickView.value = false;
+
+  const files = group.items
+    .map((item: any) => item?.file)
+    .filter((f: any) => f && Number.isFinite(Number(f.id)) && Number(f.id) > 0);
+
+  clearSelectionForFileListUpdate();
+  resetGroupingState();
+  fileList.value = preserveLoadedThumbnails(files);
+  totalFileCount.value = fileList.value.length;
+  totalFileSize.value = fileList.value.reduce((total: number, f: any) => total + Number(f.size || 0), 0);
+  timelineData.value = [];
+  contentReady.value = true;
+  isLoading.value = false;
+  hasLoadedInitialResult.value = true;
+
+  // Title reflects the similar-photo group context.
+  const label = group.representative?.name || (files[0]?.name) || '';
+  contentTitle.value = label
+    ? `${localeMsg.value.search.similar_images} - ${label}`
+    : localeMsg.value.search.similar_images;
+
+  // Reset scroll and selection, then center the first member.
+  scrollPosition.value = 0;
+  selectedItemIndex.value = 0;
+  if (gridViewRef.value) {
+    gridViewRef.value.scrollToPosition(0);
+  }
+};
+
 const handleDedupSelectFile = (fileId: number) => {
   const requestId = ++dedupNavigationRequestId;
   checkUnsavedChanges(async () => {
@@ -8848,6 +8895,7 @@ const isFixedAiResultView = computed(() =>
 
 const isSimilaritySortedResultView = computed(() =>
   tempViewMode.value === 'similar' ||
+  tempViewMode.value === 'similar-group' ||
   (libConfig.activePane !== 'collection' && isAiSearchMode.value)
 );
 

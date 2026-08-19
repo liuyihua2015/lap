@@ -505,6 +505,7 @@ const props = defineProps({
 
 const emit = defineEmits<{
   close: [];
+  'open-similar-group-in-view': [group: any];
   'select-file': [fileId: number];
   'preview-file': [fileId: number];
   'trash-selected-duplicates': [groupId: string, fileIds: number[], reclaimableBytes: number];
@@ -987,6 +988,7 @@ async function selectSimilarGroup(group: any) {
   catch (error) { console.error('getSimilarGroup error:', error); similarError.value = true; return; }
   selectSimilarDuplicatesByDefault(group);
   await hydrateSimilarThumbnails(similarGroups.value, selectedSimilarGroupId.value);
+  emit('open-similar-group-in-view', group);
   if (group.representative?.id) emit('select-file', group.representative.id);
 }
 
