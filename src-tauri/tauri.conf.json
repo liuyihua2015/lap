@@ -1,7 +1,7 @@
 {
-  "productName": "Lap",
-"version": "0.3.2",
-  "identifier": "com.julyx10.lap",
+"productName": "Lumi",
+  "version": "0.3.2",
+  "identifier": "com.liuyihua.lumi",
   "build": {
     "beforeBuildCommand": "pnpm --dir ../src-vite build",
     "beforeDevCommand": "pnpm --dir ../src-vite dev",

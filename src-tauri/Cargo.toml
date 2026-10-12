@@ -1,10 +1,11 @@
 [package]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-name = "Lap"
+name = "Lumi"
 version = "0.3.2"
 description = "An offline-first photo manager for large local libraries."
 homepage = "https://julyx10.github.io/lap"
-repository = "https://github.com/julyx10/lap"
+repository = "https://github.com/liuyihua2015/lap"
+# Original author of Lap (julyx10). Lumi is a fork; keep the original attribution.
 authors = ["julyx10 <tiangle@gmail.com>"]
 edition = "2024"
 license = "GPL-3.0-or-later"

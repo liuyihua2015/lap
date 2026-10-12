@@ -87,6 +87,56 @@
             </a>
           </div>
         </div>
+
+        <!-- fork attribution: original author + this fork's maintainer -->
+        <div class="grid grid-cols-[84px_1fr] items-start gap-3 text-sm">
+          <div class="text-base-content/30">
+            {{ $t('settings.about.package.original_author') }}
+          </div>
+          <div class="flex items-center gap-2">
+            <a
+              href="https://github.com/julyx10/lap"
+              target="_blank"
+              class="inline-flex items-center gap-1.5 transition-colors hover:text-primary"
+            >
+              <IconGithub class="t-icon-size-sm" />
+              <span>julyx10</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-[84px_1fr] items-start gap-3 text-sm">
+          <div class="text-base-content/30">
+            {{ $t('settings.about.package.maintainer') }}
+          </div>
+          <div class="flex items-center gap-2">
+            <a
+              :href="packageInfo.repository"
+              target="_blank"
+              class="inline-flex items-center gap-1.5 transition-colors hover:text-primary"
+            >
+              <IconGithub class="t-icon-size-sm" />
+              <span>liuyihua2015</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-[84px_1fr] items-start gap-3 text-sm">
+          <div class="text-base-content/30">
+            {{ $t('settings.about.package.based_on') }}
+          </div>
+          <div>
+            <a
+              href="https://github.com/julyx10/lap"
+              target="_blank"
+              class="transition-colors hover:text-primary"
+            >
+              Lap
+            </a>
+            <span class="text-base-content/40"> · </span>
+            <span>GPL-3.0-or-later</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
