@@ -54,28 +54,57 @@
         </div>
         <TButton 
           :icon="IconAdd"
-          :tooltip="$t('tag.add_tag')"
+          :tooltip="$t('msgbox.new_tag.title')"
           @click="addNewTag"
         />
       </div>
 
-      <div class="min-h-24 max-h-96 overflow-y-auto rounded-box p-2 bg-base-100/30 border border-base-content/5 flex" :class="filteredTags.length === 0 ? 'items-center justify-center' : ''">
-        <div v-if="filteredTags.length > 0" class="flex flex-wrap gap-2 w-full">
+      <div v-if="allTags.length" class="text-[10px] uppercase tracking-widest font-bold text-base-content/30 select-none">{{ $t('tag.title') }} ({{ allTags.length }})</div>
+      <div class="min-h-24 max-h-52 overflow-y-auto rounded-box p-1 bg-base-100/30 border border-base-content/5 flex" :class="filteredTags.length === 0 ? 'items-center justify-center' : ''">
+        <div v-if="filteredTags.length > 0" class="w-full">
           <div
             v-for="(tag, index) in filteredTags"
             :key="tag.id"
             :class="[
-              'badge badge-lg overflow-hidden whitespace-pre text-ellipsis cursor-pointer transition-colors duration-200',
+              'group w-full p-2 flex items-center gap-2 rounded-box text-left cursor-pointer transition-colors',
               {
-                'badge-primary': selectedTags.has(tag.id),
-                'badge-outline border-base-content/30 bg-base-content/30': intermediateTags.has(tag.id) && !selectedTags.has(tag.id),
-                'badge-outline text-base-content/30 hover:text-base-content/70 hover:bg-base-100': !selectedTags.has(tag.id) && !intermediateTags.has(tag.id),
+                'text-primary': selectedTags.has(tag.id),
+                'bg-base-content/5': intermediateTags.has(tag.id) && !selectedTags.has(tag.id),
+                'hover:bg-base-content/5': !selectedTags.has(tag.id) && !intermediateTags.has(tag.id),
                 'ring-2 ring-primary ring-offset-1 ring-offset-base-100': focusedTagIndex === index,
               }
             ]"
             @click="toggleTag(tag.id)"
           >
-            <span>{{ tag.name }}</span>
+            <label class="flex items-center cursor-pointer shrink-0" @click.stop @dblclick.stop>
+              <input
+                type="checkbox"
+                class="checkbox checkbox-xs"
+                :class="selectedTags.has(tag.id) ? 'checkbox-primary opacity-70' : ''"
+                :checked="selectedTags.has(tag.id)"
+                :indeterminate="intermediateTags.has(tag.id)"
+                @change="toggleTag(tag.id)"
+              />
+            </label>
+            <IconTag class="w-4 h-4 shrink-0" />
+            <input
+              v-if="renamingId === Number(tag.id)"
+              ref="renameInput"
+              v-model="renameValue"
+              class="input px-1 min-w-0 flex-1 text-sm"
+              maxlength="255"
+              @click.stop
+              @keydown.stop
+              @keydown.enter.prevent="commitRename(tag)"
+              @keydown.escape.prevent="cancelRename"
+              @blur="commitRename(tag)"
+            />
+            <span v-else class="min-w-0 flex-1 truncate">{{ tag.name }}</span>
+            <span v-if="renamingId !== Number(tag.id) && Number(tag.count || 0) > 0" class="sidebar-item-count shrink-0 group-hover:hidden">{{ Number(tag.count || 0).toLocaleString() }}</span>
+            <div v-if="renamingId !== Number(tag.id)" class="shrink-0 hidden group-hover:flex">
+              <button type="button" class="p-1 text-base-content/40 hover:text-base-content cursor-pointer" :title="$t('menu.tag.rename')" @click.stop="startRename(tag)"><IconEdit class="w-4 h-4" /></button>
+              <button type="button" class="p-1 text-base-content/40 hover:text-error cursor-pointer" :title="$t('tag.delete_tag')" @click.stop="deleteTarget = tag"><IconTrash class="w-4 h-4" /></button>
+            </div>
           </div>
         </div>
         <span v-else class="text-base-content/30">{{ $t('tag.not_found') }}</span>
@@ -100,18 +129,35 @@
 
     </div>
   </ModalDialog>
+  <MessageBox
+    v-if="deleteTarget"
+    :title="$t('msgbox.delete_tag.title')"
+    :message="$t('msgbox.delete_tag.content', { tag: deleteTarget.name })"
+    :OkText="$t('msgbox.delete_tag.ok')"
+    :cancelText="$t('msgbox.cancel')"
+    :warningOk="true"
+    @ok="confirmDelete"
+    @cancel="deleteTarget = null"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
+import { emit as tauriEmit } from '@tauri-apps/api/event';
+import { useI18n } from 'vue-i18n';
+import { useToast } from '@/common/toast';
 import { 
   getAllTags, 
   createTag, 
   getTagSelectionCounts,
   applyTagsToFiles,
+  deleteTag,
+  renameTag,
 } from '@/common/api';
-import { IconAdd, IconClose, IconSearch } from '@/common/icons';
+import { IconAdd, IconClose, IconEdit, IconSearch, IconTag, IconTrash } from '@/common/icons';
+import MessageBox from './MessageBox.vue';
 import TButton from './TButton.vue';
+import { libConfig } from '@/common/config';
 import { useUIStore } from '@/stores/uiStore';
 import ModalDialog from '@/components/ModalDialog.vue';
 
@@ -122,8 +168,10 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['ok', 'cancel']);
+const emit = defineEmits(['ok', 'cancel', 'states-changed']);
 const uiStore = useUIStore();
+const toast = useToast();
+const { t } = useI18n();
 
 const allTags = ref<any[]>([]);
 const tagSearchInputRef = ref<HTMLInputElement | null>(null);
@@ -137,10 +185,17 @@ const isInTagList = ref(false); // true = keyboard focus is in tag list
 const isLoadingTags = ref(false);
 const isApplyingTags = ref(false);
 const tagLoadFailed = ref(false);
+const renamingId = ref<number | null>(null);
+const renameValue = ref('');
+const renameInput = ref<HTMLInputElement | HTMLInputElement[] | null>(null);
+const deleteTarget = ref<any | null>(null);
 
 // Sets to track tag states
 const selectedTags = ref<Set<number>>(new Set()); // Tags present on ALL selected files
 const intermediateTags = ref<Set<number>>(new Set()); // Tags present on SOME selected files
+const initialSelectedTags = ref<Set<number>>(new Set());
+const initialIntermediateTags = ref<Set<number>>(new Set());
+const tagChanges = ref<Map<number, 'add' | 'remove'>>(new Map());
 
 const filteredTags = computed(() => {
   if (!tagSearch.value) {
@@ -169,12 +224,20 @@ onBeforeUnmount(() => {
 
 // load all tags
 async function loadAllTags() {
-  allTags.value = (await getAllTags()) || [];
+  const tags = await getAllTags(0);
+  const sidebarCounts = libConfig.tag.counts || {};
+  allTags.value = (tags || []).map((tag: any) => ({
+    ...tag,
+    count: Number(sidebarCounts[String(tag.id)] || 0),
+  }));
 }
 
 async function loadExistingTagsForFiles() {
   selectedTags.value.clear();
   intermediateTags.value.clear();
+  initialSelectedTags.value.clear();
+  initialIntermediateTags.value.clear();
+  tagChanges.value.clear();
   tagLoadFailed.value = false;
 
   if (props.fileIds.length === 0) {
@@ -193,8 +256,10 @@ async function loadExistingTagsForFiles() {
       const count = Number(entry.count);
       if (count === props.fileIds.length) {
         selectedTags.value.add(tagId);
+        initialSelectedTags.value.add(tagId);
       } else if (count > 0) {
         intermediateTags.value.add(tagId);
+        initialIntermediateTags.value.add(tagId);
       }
     }
   } finally {
@@ -207,13 +272,16 @@ async function addNewTag() {
   if (trimmedName) {
     const existingTag = allTags.value.find(tag => tag.name.toLowerCase() === trimmedName.toLowerCase());
     if (existingTag) {
-      // If tag already exists, just select it
-      toggleTag(existingTag.id);
+      toast.error(t('tag.name_exists'));
+      return;
     } else {
       const newTag = await createTag(trimmedName);
       if (newTag) {
         allTags.value.push(newTag);
         toggleTag(newTag.id);
+        await tauriEmit('tags-changed');
+      } else {
+        toast.error(t('tag.name_save_failed'));
       }
     }
     newTagName.value = ''; // Clear input
@@ -221,24 +289,112 @@ async function addNewTag() {
 }
 
 function toggleTag(tagId: number) {
-  if (selectedTags.value.has(tagId)) {
-    selectedTags.value.delete(tagId);
-    intermediateTags.value.delete(tagId); // No longer intermediate if fully deselected
+  const normalized = Number(tagId);
+  const next = new Map(tagChanges.value);
+  const current = next.get(normalized);
+  const initialState = initialSelectedTags.value.has(normalized)
+    ? 'selected'
+    : initialIntermediateTags.value.has(normalized)
+      ? 'intermediate'
+      : 'none';
+
+  if (current === 'add') {
+    if (initialState === 'none') {
+      next.delete(normalized);
+    } else {
+      next.set(normalized, 'remove');
+    }
+    setTagVisualState(normalized, 'none');
+  } else if (current === 'remove') {
+    next.delete(normalized);
+    setTagVisualState(normalized, initialState);
+  } else if (selectedTags.value.has(normalized)) {
+    next.set(normalized, 'remove');
+    setTagVisualState(normalized, 'none');
   } else {
-    selectedTags.value.add(tagId);
-    intermediateTags.value.delete(tagId); // If it was intermediate, it's now fully selected
+    next.set(normalized, 'add');
+    setTagVisualState(normalized, 'selected');
   }
+  tagChanges.value = next;
+}
+
+function setTagVisualState(tagId: number, state: 'selected' | 'intermediate' | 'none') {
+  const selected = new Set(selectedTags.value);
+  const intermediate = new Set(intermediateTags.value);
+  selected.delete(tagId);
+  intermediate.delete(tagId);
+  if (state === 'selected') selected.add(tagId);
+  if (state === 'intermediate') intermediate.add(tagId);
+  selectedTags.value = selected;
+  intermediateTags.value = intermediate;
+}
+
+async function startRename(tag: any) {
+  renamingId.value = Number(tag.id);
+  renameValue.value = String(tag.name || '');
+  await nextTick();
+  const input = Array.isArray(renameInput.value) ? renameInput.value[0] : renameInput.value;
+  input?.focus({ preventScroll: true });
+  input?.select();
+}
+
+function cancelRename() {
+  renamingId.value = null;
+  renameValue.value = '';
+}
+
+async function commitRename(tag: any) {
+  if (renamingId.value !== Number(tag.id)) return;
+  const name = renameValue.value.trim();
+  if (name && name !== tag.name) {
+    const duplicate = allTags.value.some(item =>
+      Number(item.id) !== Number(tag.id)
+      && String(item.name).toLocaleLowerCase() === name.toLocaleLowerCase()
+    );
+    if (duplicate) {
+      toast.error(t('tag.name_exists'));
+      cancelRename();
+      return;
+    }
+    if (await renameTag(Number(tag.id), name)) {
+      tag.name = name;
+      await tauriEmit('tags-changed');
+    } else {
+      toast.error(t('tag.name_save_failed'));
+    }
+  }
+  cancelRename();
+}
+
+async function confirmDelete() {
+  const tag = deleteTarget.value;
+  if (!tag) return;
+  deleteTarget.value = null;
+  if (!await deleteTag(Number(tag.id))) return;
+  const tagId = Number(tag.id);
+  allTags.value = allTags.value.filter(item => Number(item.id) !== tagId);
+  selectedTags.value.delete(tagId);
+  intermediateTags.value.delete(tagId);
+  initialSelectedTags.value.delete(tagId);
+  initialIntermediateTags.value.delete(tagId);
+  tagChanges.value.delete(tagId);
+  const states = await applyTagsToFiles(props.fileIds, [], []);
+  if (states !== null) emit('states-changed', states);
+  await tauriEmit('tags-changed');
 }
 
 async function clickOk() {
   if (isLoadingTags.value || isApplyingTags.value || tagLoadFailed.value) return;
   isApplyingTags.value = true;
-  const addTagIds = Array.from(selectedTags.value);
-  const removeTagIds = allTags.value
-    .map((tag: any) => Number(tag.id))
-    .filter((tagId: number) => !selectedTags.value.has(tagId) && !intermediateTags.value.has(tagId));
+  const addTagIds = Array.from(tagChanges.value)
+    .filter(([, change]) => change === 'add')
+    .map(([tagId]) => tagId);
+  const removeTagIds = Array.from(tagChanges.value)
+    .filter(([, change]) => change === 'remove')
+    .map(([tagId]) => tagId);
   const result = await applyTagsToFiles(props.fileIds, addTagIds, removeTagIds);
   if (result !== null) {
+    await tauriEmit('tags-changed');
     emit('ok', result);
   } else {
     isApplyingTags.value = false;

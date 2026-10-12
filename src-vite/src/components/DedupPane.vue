@@ -79,7 +79,21 @@
             </template>
           </div>
         </div>
-        <div v-else ref="similarSplitPaneRef" class="flex min-h-0 flex-1 flex-col">
+        <div v-else class="flex min-h-0 flex-1 flex-col">
+          <section class="mb-2 flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 rounded-box border border-base-content/10 bg-base-100/40 px-3 py-2" aria-label="Similar photo summary">
+            <div class="min-w-0">
+              <div class="text-[10px] font-bold uppercase tracking-widest text-base-content/30">
+                {{ $t('info_panel.dedup.similar.results') }}
+              </div>
+              <div class="text-xs text-base-content/60">
+                {{ $t('info_panel.dedup.similar_photos_summary', {
+                  count: similarPhotoCount.toLocaleString(),
+                  size: formatFileSize(similarPhotoBytes),
+                }) }}
+              </div>
+            </div>
+          </section>
+          <div ref="similarSplitPaneRef" class="flex min-h-0 flex-1 flex-col">
           <div
             class="min-h-0 shrink-0 flex flex-col border-t border-base-content/5 px-1 py-3 space-y-3"
             :style="{ height: `${config.dedup.duplicateSetsHeight}%` }"
@@ -233,6 +247,7 @@
               </div>
             </TransitionGroup>
           </div>
+          </div>
         </div>
       </template>
       <template v-else>
@@ -265,7 +280,30 @@
         </div>
       </div>
 
-      <div v-else ref="dedupSplitPaneRef" class="flex min-h-0 flex-1 flex-col">
+      <div v-else class="flex min-h-0 flex-1 flex-col">
+        <section class="mb-2 flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 rounded-box border border-base-content/10 bg-base-100/40 px-3 py-2" aria-label="Bulk duplicate actions">
+          <div class="min-w-0">
+            <div class="text-[10px] font-bold uppercase tracking-widest text-base-content/30">
+              {{ $t('info_panel.dedup.reclaimable_size') }}
+            </div>
+            <div class="text-xs text-base-content/60">
+              {{ $t('info_panel.dedup.removable_copies_summary', {
+                count: totalDuplicateFileCount.toLocaleString(),
+                size: formatFileSize(totalReclaimableBytes),
+              }) }}
+            </div>
+          </div>
+          <PanelActionButton
+            class="ml-auto"
+            :icon="IconTrash"
+            danger
+            :disabled="totalDuplicateFileCount === 0"
+            @click="trashAllDuplicates"
+          >
+            {{ $t('info_panel.dedup.delete_all') }}
+          </PanelActionButton>
+        </section>
+      <div ref="dedupSplitPaneRef" class="flex min-h-0 flex-1 flex-col">
         <div
           class="min-h-0 shrink-0 flex flex-col border-t border-base-content/5 px-1 py-3 space-y-3"
           :style="{ height: `${config.dedup.duplicateSetsHeight}%` }"
@@ -411,6 +449,7 @@
           </TransitionGroup>
         </div>
       </div>
+      </div>
       </template>
     </div>
   </div>
@@ -457,6 +496,7 @@ import {
   similarCancelScan,
   similarGetEligibleCount,
   similarListGroups,
+  similarGetOverview,
   similarGetGroup,
   similarSetKeep,
   similarHasScan,
@@ -510,6 +550,7 @@ const emit = defineEmits<{
   'select-file': [fileId: number];
   'preview-file': [fileId: number];
   'trash-selected-duplicates': [groupId: string, fileIds: number[], reclaimableBytes: number];
+  'trash-all-duplicates': [fileCount: number, reclaimableBytes: number];
   'trash-selected-similar': [groupId: string, fileIds: number[], reclaimableBytes: number];
   'compare-selected-photos': [files: any[]];
   'culling-status-updated': [fileId: number, cullingFlag: number];
@@ -518,14 +559,16 @@ const emit = defineEmits<{
 
 const selectedDupIdsByGroup = ref<Map<number, Set<number>>>(new Map());
 const selectedSimilarIdsByGroup = ref<Map<number, Set<number>>>(new Map());
-const isDedupLoading = ref(false);
+const isDedupLoading = ref(true);
 const activeTab = ref<'duplicates' | 'similar'>(
   config.dedup.activeTab === 'similar' ? 'similar' : 'duplicates',
 );
-const similarLoading = ref(false);
+const similarLoading = ref(activeTab.value === 'similar');
 const similarStatus = ref<any>({ phase: 'idle', current: 0, total: 0 });
 const similarGroups = ref<any[]>([]);
 const similarTotalGroups = ref(0);
+const similarPhotoCount = ref(0);
+const similarPhotoBytes = ref(0);
 const isLoadingMoreSimilarGroups = ref(false);
 const selectedSimilarGroupId = ref<number | null>(null);
 const similarEligibleCount = ref(0);
@@ -557,6 +600,7 @@ const dedupSplitPaneRef = ref<HTMLElement | null>(null);
 const similarSplitPaneRef = ref<HTMLElement | null>(null);
 const isDraggingDuplicateSplitter = ref(false);
 const isLoadingMoreDuplicateThumbnails = ref(false);
+let dedupScanReady = false;
 
 const duplicateGroups = computed(() =>
   rawGroups.value.map((group: any) => {
@@ -805,6 +849,7 @@ async function fetchSimilarGroups(append = false) {
   const groups = Array.isArray(page?.items) ? page.items : [];
   similarGroups.value = append ? [...similarGroups.value, ...groups] : groups;
   similarTotalGroups.value = Number(page?.total || 0);
+  if (!append) await refreshSimilarOverview(scopeKey);
   similarLoadedScope.value = props.similarScanKey;
   if (!append) {
     selectedSimilarGroupId.value = similarGroups.value[0] ? Number(similarGroups.value[0].id) : null;
@@ -821,6 +866,22 @@ async function fetchSimilarGroups(append = false) {
   await hydrateSimilarThumbnails(similarGroups.value, selectedSimilarGroupId.value);
 }
 
+async function refreshSimilarOverview(scopeKey = props.similarScanKey) {
+  if (!scopeKey) {
+    similarPhotoCount.value = 0;
+    similarPhotoBytes.value = 0;
+    return;
+  }
+  try {
+    const overview = await similarGetOverview(scopeKey);
+    if (scopeKey !== props.similarScanKey) return;
+    similarPhotoCount.value = Number(overview?.total_files || 0);
+    similarPhotoBytes.value = Number(overview?.total_size || 0);
+  } catch (error) {
+    console.error('refreshSimilarOverview error:', error);
+  }
+}
+
 async function loadMoreSimilarGroups(event: Event) {
   const target = event.currentTarget as HTMLElement;
   if (isLoadingMoreSimilarGroups.value || similarGroups.value.length >= similarTotalGroups.value) return;
@@ -833,8 +894,12 @@ async function loadMoreSimilarGroups(event: Event) {
 async function openSimilarTab(forceReload = false) {
   activeTab.value = 'similar';
   config.dedup.activeTab = 'similar';
-  if (!props.similarScanKey) return;
+  if (!props.similarScanKey) {
+    similarLoading.value = false;
+    return;
+  }
   const scopeKey = props.similarScanKey;
+  similarLoading.value = true;
   if (!similarHasScanned.value) similarEligibleCountLoading.value = true;
   if (isDedupLoading.value) return;
   if (forceReload) similarLoadedScope.value = '';
@@ -843,6 +908,7 @@ async function openSimilarTab(forceReload = false) {
   try { status = await similarGetScanStatus(); }
   catch (error) {
     console.error('getSimilarScanStatus error:', error);
+    similarLoading.value = false;
     similarEligibleCountLoading.value = false;
     similarError.value = true;
     return;
@@ -857,6 +923,7 @@ async function openSimilarTab(forceReload = false) {
   if (similarLoadedScope.value !== props.similarScanKey) await fetchSimilarGroups();
   if (scopeKey !== props.similarScanKey) return;
   if (similarError.value) {
+    similarLoading.value = false;
     similarEligibleCountLoading.value = false;
     return;
   }
@@ -865,6 +932,7 @@ async function openSimilarTab(forceReload = false) {
   try { hasPersistedScan = await similarHasScan(props.similarScanKey); }
   catch (error) {
     console.error('similarHasScan error:', error);
+    similarLoading.value = false;
     similarEligibleCountLoading.value = false;
     similarError.value = true;
     return;
@@ -874,27 +942,29 @@ async function openSimilarTab(forceReload = false) {
     || (status?.scopeKey === props.similarScanKey && status?.state === 'finished')
     || hasPersistedScan;
   if (similarHasScanned.value) {
+    similarLoading.value = false;
     similarEligibleCountLoading.value = false;
     return;
   }
-  if (!similarHasScanned.value) {
-    let eligibleCount;
-    try {
-      eligibleCount = Number(await similarGetEligibleCount(
-        props.dedupFileIds === null ? (props.dedupQueryParams || null) : null,
-        props.dedupFileIds === null ? props.dedupCollectionId : null,
-        props.dedupFileIds,
-      ));
-    } catch (error) {
-      console.error('getSimilarEligibleCount error:', error);
-      similarError.value = true;
-      return;
-    } finally {
-      if (scopeKey === props.similarScanKey) similarEligibleCountLoading.value = false;
+  let eligibleCount;
+  try {
+    eligibleCount = Number(await similarGetEligibleCount(
+      props.dedupFileIds === null ? (props.dedupQueryParams || null) : null,
+      props.dedupFileIds === null ? props.dedupCollectionId : null,
+      props.dedupFileIds,
+    ));
+  } catch (error) {
+    console.error('getSimilarEligibleCount error:', error);
+    similarError.value = true;
+    return;
+  } finally {
+    if (scopeKey === props.similarScanKey) {
+      similarLoading.value = false;
+      similarEligibleCountLoading.value = false;
     }
-    if (scopeKey !== props.similarScanKey) return;
-    similarEligibleCount.value = eligibleCount;
   }
+  if (scopeKey !== props.similarScanKey) return;
+  similarEligibleCount.value = eligibleCount;
 }
 
 function selectDuplicatesTab() {
@@ -916,6 +986,8 @@ async function startSimilar() {
 function resetSimilarResults() {
   similarGroups.value = [];
   similarTotalGroups.value = 0;
+  similarPhotoCount.value = 0;
+  similarPhotoBytes.value = 0;
   selectedSimilarIdsByGroup.value.clear();
   selectedSimilarGroupId.value = null;
   similarHasScanned.value = false;
@@ -1085,6 +1157,11 @@ function trashSelectedDuplicates(groupId: number, reclaimableBytes: number) {
   emit('trash-selected-duplicates', String(groupId), ids, reclaimableBytes);
 }
 
+function trashAllDuplicates() {
+  if (totalDuplicateFileCount.value <= 0) return;
+  emit('trash-all-duplicates', totalDuplicateFileCount.value, totalReclaimableBytes.value);
+}
+
 function applyDeletedFiles(groupId: number, deletedFileIds: number[]) {
   const groupIndex = rawGroups.value.findIndex((group: any) => Number(group.id) === groupId);
   if (groupIndex < 0 || deletedFileIds.length === 0) return;
@@ -1148,6 +1225,7 @@ function applyDeletedSimilarFiles(groupId: number, deletedFileIds: number[]) {
   const items = (group.items || []).filter((item: any) => !deleted.has(Number(item.file_id)));
   const selected = selectedSimilarIdsByGroup.value.get(groupId);
   deleted.forEach(fileId => selected?.delete(fileId));
+  void refreshSimilarOverview();
   if (items.length < 2) {
     similarGroups.value.splice(index, 1);
     selectedSimilarIdsByGroup.value.delete(groupId);
@@ -1492,7 +1570,7 @@ watch(
       totalReclaimableBytes.value = 0;
       return;
     }
-    triggerBackendDedup();
+    if (dedupScanReady) void triggerBackendDedup();
   }
 );
 
@@ -1509,7 +1587,7 @@ watch(
     similarHasScanned.value = false;
     similarError.value = false;
     similarLoadedScope.value = '';
-    similarLoading.value = false;
+    similarLoading.value = Boolean(newKey && activeTab.value === 'similar');
     showLargeSimilarScanConfirm.value = false;
     if (newKey && activeTab.value === 'similar') void openSimilarTab();
   },
@@ -1534,7 +1612,6 @@ watch(selectedSimilarGroupId, async (groupId, prevGroupId) => {
 });
 
 onMounted(async () => {
-  isDedupLoading.value = true;
   await nextTick();
 
   unlistenDedupProgress.value = await listenDedupScanProgress(async (event: any) => {
@@ -1583,7 +1660,12 @@ onMounted(async () => {
     isDedupLoading.value = false;
     return;
   }
-  triggerBackendDedup();
+
+  await new Promise<void>(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+  dedupScanReady = true;
+  void triggerBackendDedup();
   if (activeTab.value === 'similar') await openSimilarTab();
 });
 
@@ -1601,5 +1683,6 @@ onUnmounted(() => {
 defineExpose({
   applyDeletedFiles,
   applyDeletedSimilarFiles,
+  refreshGroups: fetchGroups,
 });
 </script>

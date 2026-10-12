@@ -23,14 +23,14 @@
         </div>
         <TButton :icon="IconAdd" :tooltip="$t('collection.add')" :disabled="creatingCollection || collections.length >= config.main.maxCollectionCount" @click="addNewCollection" />
       </div>
-      <div v-if="collections.length" class="text-[10px] uppercase tracking-widest font-bold text-base-content/30 select-none">{{ $t('collection.title') }}</div>
+      <div v-if="collections.length" class="text-[10px] uppercase tracking-widest font-bold text-base-content/30 select-none">{{ $t('collection.title') }} ({{ collections.length }})</div>
       <div class="min-h-24 max-h-52 overflow-y-auto rounded-box p-1 bg-base-100/30 border border-base-content/5 select-none">
         <div
           v-for="collection in visibleCollections"
           :key="collection.id"
           :ref="element => setCollectionRowRef(Number(collection.id), element)"
           class="group w-full p-2 flex items-center gap-1 rounded-box text-left cursor-pointer hover:bg-base-content/5 transition-colors"
-          :class="selectedIds.has(Number(collection.id)) ? 'text-primary' : ''"
+          :class="isSelected(collection.id) ? 'text-primary' : ''"
           tabindex="0"
           @click="toggle(collection.id)"
           @keydown.enter.prevent="toggle(collection.id)"
@@ -40,8 +40,10 @@
             <input
               type="checkbox"
               class="checkbox checkbox-xs"
-              :class="selectedIds.has(Number(collection.id)) ? 'checkbox-primary opacity-70' : ''"
-              :checked="selectedIds.has(Number(collection.id))"
+              :class="isSelected(collection.id) ? 'checkbox-primary opacity-70' : ''"
+              :checked="isSelected(collection.id)"
+              :indeterminate="isIntermediate(collection.id)"
+              :disabled="!hasSelectedFiles"
               @change="toggle(collection.id)"
             />
           </label>
@@ -62,8 +64,7 @@
           <span v-else class="min-w-0 flex-1 truncate">{{ collection.name }}</span>
           <span
             v-if="renamingId !== Number(collection.id) && Number(collection.count || 0) > 0"
-            class="sidebar-item-count shrink-0"
-            :class="selectedIds.has(Number(collection.id)) ? 'hidden' : 'group-hover:hidden'"
+            class="sidebar-item-count shrink-0 group-hover:hidden"
           >
             {{ Number(collection.count || 0).toLocaleString() }}
           </span>
@@ -86,7 +87,7 @@
     </section>
     <div class="mt-4 flex justify-end gap-3">
       <button class="t-button-default" @click="close">{{ $t('msgbox.cancel') }}</button>
-      <button class="t-button-primary" :disabled="selectedIds.size === 0 || applying" @click="apply">{{ $t('collection.drop_action') }}</button>
+      <button class="t-button-primary" :disabled="changes.size === 0 || applying" @click="apply">{{ $t('msgbox.ok') }}</button>
     </div>
   </ModalDialog>
   <MessageBox
@@ -104,19 +105,22 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { emit as tauriEmit } from '@tauri-apps/api/event';
-import { addFilesToCollection, createCollection, deleteCollection as deleteCollectionApi, listCollections, renameCollection } from '@/common/api';
+import { useI18n } from 'vue-i18n';
+import { useToast } from '@/common/toast';
+import { addFilesToCollection, createCollection, deleteCollection as deleteCollectionApi, getCollectionSelectionCounts, listCollections, removeFilesFromCollection, renameCollection } from '@/common/api';
 import { IconAdd, IconBookmark, IconClose, IconEdit, IconSearch, IconTrash } from '@/common/icons';
-import { config } from '@/common/config';
+import { config, libConfig } from '@/common/config';
 import MessageBox from '@/components/MessageBox.vue';
 import ModalDialog from '@/components/ModalDialog.vue';
 import TButton from '@/components/TButton.vue';
 import { useUIStore } from '@/stores/uiStore';
 
 const props = defineProps<{ fileIds: number[] }>();
-const emit = defineEmits(['applied', 'cancel']);
+const emit = defineEmits(['applied', 'cancel', 'deleted']);
 const collections = ref<any[]>([]);
 const query = ref('');
-const selectedIds = ref(new Set<number>());
+const selectionCounts = ref(new Map<number, number>());
+const changes = ref(new Map<number, 'add' | 'remove'>());
 const applying = ref(false);
 const creatingCollection = ref(false);
 const searchInput = ref<HTMLInputElement | null>(null);
@@ -128,17 +132,26 @@ const renameInput = ref<HTMLInputElement | HTMLInputElement[] | null>(null);
 const deleteTarget = ref<any | null>(null);
 const collectionRowRefs = new Map<number, Element>();
 const uiStore = useUIStore();
+const toast = useToast();
+const { t } = useI18n();
+
+function showNameSaveError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  toast.error(t(message.includes('already exists') ? 'collection.name_exists' : 'collection.name_save_failed'));
+}
 
 const matchingCollections = computed(() => {
   const normalized = query.value.trim().toLocaleLowerCase();
   return normalized ? collections.value.filter(c => String(c.name).toLocaleLowerCase().includes(normalized)) : collections.value;
 });
 const visibleCollections = computed(() => matchingCollections.value);
+const hasSelectedFiles = computed(() => props.fileIds.some(id => Number(id) > 0));
 
 onMounted(async () => {
   window.addEventListener('keydown', handleKeyDown);
   uiStore.pushInputHandler('AddToCollectionDialog');
   await loadCollections();
+  await loadSelectionCounts();
   await nextTick();
   searchInput.value?.focus();
 });
@@ -160,12 +173,33 @@ function handleKeyDown(event: KeyboardEvent) {
 }
 
 async function toggle(id: number) {
+  if (!hasSelectedFiles.value) return;
   const normalized = Number(id);
-  const next = new Set(selectedIds.value);
-  next.has(normalized) ? next.delete(normalized) : next.add(normalized);
-  selectedIds.value = next;
+  const next = new Map(changes.value);
+  const current = next.get(normalized);
+  const initialCount = selectionCounts.value.get(normalized) || 0;
+  if (current === 'add') {
+    initialCount === 0 ? next.delete(normalized) : next.set(normalized, 'remove');
+  } else if (current === 'remove') {
+    next.delete(normalized);
+  }
+  else next.set(normalized, isSelected(normalized) ? 'remove' : 'add');
+  changes.value = next;
   await nextTick();
   collectionRowRefs.get(normalized)?.scrollIntoView({ block: 'nearest' });
+}
+
+function isSelected(id: number) {
+  if (!hasSelectedFiles.value) return false;
+  const change = changes.value.get(Number(id));
+  return change === 'add' || (change === undefined && selectionCounts.value.get(Number(id)) === props.fileIds.length);
+}
+
+function isIntermediate(id: number) {
+  if (!hasSelectedFiles.value) return false;
+  if (changes.value.has(Number(id))) return false;
+  const count = selectionCounts.value.get(Number(id)) || 0;
+  return count > 0 && count < props.fileIds.length;
 }
 
 function setCollectionRowRef(id: number, element: Element | null) {
@@ -174,7 +208,19 @@ function setCollectionRowRef(id: number, element: Element | null) {
 }
 
 async function loadCollections() {
-  collections.value = (await listCollections()) || [];
+  const result = await listCollections();
+  const sidebarCounts = libConfig.collection.counts || {};
+  collections.value = (result || []).map((collection: any) => ({
+    ...collection,
+    count: Number(sidebarCounts[String(collection.id)] || 0),
+  }));
+}
+
+async function loadSelectionCounts() {
+  if (!props.fileIds.length) return;
+  const counts = await getCollectionSelectionCounts(props.fileIds);
+  if (counts === null) return;
+  selectionCounts.value = new Map(counts.map((entry: any) => [Number(entry.collection_id), Number(entry.count)]));
 }
 
 async function addNewCollection() {
@@ -185,14 +231,18 @@ async function addNewCollection() {
     const collection = await createCollection(name);
     if (!collection?.id) return;
     await loadCollections();
-    const next = new Set(selectedIds.value);
-    next.add(Number(collection.id));
-    selectedIds.value = next;
+    if (hasSelectedFiles.value) {
+      const next = new Map(changes.value);
+      next.set(Number(collection.id), 'add');
+      changes.value = next;
+    }
     newCollectionName.value = '';
     query.value = '';
     await nextTick();
     newCollectionNameInput.value?.focus();
     await tauriEmit('collections-changed');
+  } catch (error) {
+    showNameSaveError(error);
   } finally {
     creatingCollection.value = false;
   }
@@ -216,9 +266,13 @@ async function commitRename(collection: any) {
   if (renamingId.value !== Number(collection.id)) return;
   const name = renameValue.value.trim();
   if (name && name !== collection.name) {
-    await renameCollection(Number(collection.id), name);
-    await loadCollections();
-    await tauriEmit('collections-changed');
+    try {
+      await renameCollection(Number(collection.id), name);
+      await loadCollections();
+      await tauriEmit('collections-changed');
+    } catch (error) {
+      showNameSaveError(error);
+    }
   }
   cancelRename();
 }
@@ -232,23 +286,44 @@ async function confirmDelete() {
   if (!target) return;
   deleteTarget.value = null;
   await deleteCollectionApi(Number(target.id));
-  const next = new Set(selectedIds.value);
+  const next = new Map(changes.value);
   next.delete(Number(target.id));
-  selectedIds.value = next;
+  changes.value = next;
+  selectionCounts.value.delete(Number(target.id));
   await loadCollections();
   await tauriEmit('collections-changed');
+  emit('deleted', Number(target.id));
 }
 
 async function apply() {
   const fileIds = [...new Set(props.fileIds.map(Number).filter(id => id > 0))];
-  if (!fileIds.length || !selectedIds.value.size || applying.value) return;
+  if (!fileIds.length || !changes.value.size || applying.value) return;
   applying.value = true;
   try {
-    const settled = await Promise.allSettled([...selectedIds.value].map(collectionId => addFilesToCollection(collectionId, fileIds)));
-    const results = settled
-      .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
-      .map(result => result.value);
-    emit('applied', { fileIds, results, failed: settled.length - results.length });
+    const pendingChanges = [...changes.value];
+    const settled: PromiseSettledResult<any>[] = [];
+    for (const [collectionId, action] of pendingChanges) {
+      try {
+        settled.push({
+          status: 'fulfilled',
+          value: action === 'add'
+            ? await addFilesToCollection(collectionId, fileIds)
+            : await removeFilesFromCollection(collectionId, fileIds),
+        });
+      } catch (reason) {
+        settled.push({ status: 'rejected', reason });
+      }
+    }
+    const successfulChanges = pendingChanges.filter((_, index) => settled[index].status === 'fulfilled');
+    const results = settled.flatMap((result, index) =>
+      result.status === 'fulfilled' && pendingChanges[index][1] === 'add' ? [result.value] : []
+    );
+    const changedCollectionIds = successfulChanges.map(([collectionId]) => collectionId);
+    const removedCollectionIds = successfulChanges
+      .filter(([, action]) => action === 'remove')
+      .map(([collectionId]) => collectionId);
+    await tauriEmit('collections-changed');
+    emit('applied', { fileIds, results, changedCollectionIds, removedCollectionIds, failed: settled.length - successfulChanges.length });
   } finally {
     applying.value = false;
   }

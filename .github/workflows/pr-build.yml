@@ -373,7 +373,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libjpeg-turbo8-dev
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libjpeg-turbo8-dev zsync
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -466,6 +466,15 @@ jobs:
             mv "$file" "$dir/${filename}-${SUFFIX}.${ext}"
           done
 
+      - name: Strip bundled Wayland client and add update info
+        shell: bash
+        env:
+          UPDATE_INFO: "zsync|https://github.com/${{ github.repository }}/releases/download/pr-build/{name}.zsync"
+          ZSYNC_URL: "https://github.com/${{ github.repository }}/releases/download/pr-build/{name}"
+        run: >
+          bash scripts/remove_appimage_wayland_client.sh
+          src-tauri/target/${{ matrix.target }}/release/bundle/appimage
+
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -473,6 +482,7 @@ jobs:
           path: |
             src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb
             src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
+            src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage.zsync
           if-no-files-found: error
 
   publish-pr-build:

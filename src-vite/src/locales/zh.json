@@ -15,12 +15,14 @@
   },
   "collection": {
     "title": "合集",
-    "add": "添加合集",
+    "add": "新建合集",
     "edit_collections": "编辑合集",
     "recent": "最近使用的合集",
     "search": "搜索合集",
     "enter_new_collection_name": "新合集名称",
     "not_found": "未找到合集",
+    "name_exists": "已存在同名合集",
+    "name_save_failed": "无法保存合集名称",
     "default_name": "合集 {index}",
     "expand": "展开",
     "collapse": "折叠",
@@ -38,7 +40,7 @@
     "added_toast": "已添加 {count} 个文件到合集",
     "add_failed_toast": "无法将文件添加到 {count} 个合集",
     "already_exists_toast": "{count} 个文件已在合集中",
-    "clear": "移除所有文件",
+    "clear": "清空合集",
     "clear_confirm_title": "清空合集",
     "clear_confirm_message": "移除 \"{name}\" 中的所有文件？文件本身不会被删除。",
     "clear_confirm_ok": "清空",
@@ -57,7 +59,7 @@
     "smart_album_list": "智能相册",
     "search_smart_albums": "搜索智能相册",
     "no_smart_albums_found": "未找到智能相册",
-    "add_smart_album": "添加智能相册",
+    "add_smart_album": "新建智能相册",
     "folder_unavailable": {
       "title": "文件夹无法访问",
       "description": "请重新连接存储设备，或检查文件夹位置。"
@@ -67,7 +69,7 @@
       "description": "文件夹可能已移动或删除。请刷新父文件夹。"
     },
     "edit": {
-      "title_add": "添加相册",
+      "title_add": "新建相册",
       "title": "相册信息",
       "folder": "文件夹",
       "select_folder": "选择文件夹",
@@ -101,8 +103,8 @@
       "description": "通过自定义查询条件创建智能相册。"
     },
     "smart_edit": {
-      "title_add": "添加智能相册",
-      "title_edit": "编辑...",
+      "title_add": "新建智能相册",
+      "title_edit": "编辑智能相册",
       "reorder": "重新排序",
       "name": "名称",
       "description": "描述",
@@ -149,8 +151,8 @@
         "location": "地点"
       },
       "media_subtypes": {
-        "live_photo": "实况照片",
-        "raw_jpeg_pair": "RAW 配对"
+        "raw_jpeg_pair": "RAW 配对",
+        "live_motion_photos": "实况与动态照片"
       },
       "operators": {
         "is": "=",
@@ -197,10 +199,35 @@
       }
     }
   },
+  "import_organize": {
+    "section_folders": "选择文件夹",
+    "section_status": "导入状态",
+    "to_import": "待导入",
+    "files_progress": "{processed} / {total} 个文件（{size}）",
+    "source": "来源",
+    "source_placeholder": "选择来源文件夹",
+    "destination": "目标",
+    "folder_layout": "文件夹结构",
+    "layout_day": "按天 — YYYY/YYYY-MM-DD",
+    "layout_month": "按月 — YYYY/YYYY-MM",
+    "layout_year": "按年 — YYYY",
+    "layout_none": "单个文件夹",
+    "import": "导入",
+    "preparing": "正在准备导入",
+    "importing": "正在导入文件",
+    "complete": "导入完成",
+    "cancelled": "已取消导入",
+    "continue": "继续导入",
+    "imported": "已导入：{count}",
+    "skipped": "已跳过：{count}",
+    "failed": "失败：{count}",
+    "error_nested": "源文件夹和目标文件夹不能互相包含",
+    "error_destination_outside": "目标文件夹必须在相册内",
+    "error_source": "无法访问源文件夹",
+    "error_failed": "导入失败：{message}"
+  },
   "welcome": {
-    "title": "欢迎使用 Lap",
-    "description": "您的本地照片库。快速、可搜索，始终由您掌控。",
-    "add_album_title": "从添加相册开始",
+    "add_album_title": "从新建相册开始",
     "add_album_description": "选择一个文件夹，让 Lap 为您整理照片和视频。",
     "smart_album_title": "智能整理照片",
     "smart_album_description": "使用规则自动归类符合条件的照片。",
@@ -280,12 +307,13 @@
   },
   "tag": {
     "title": "标签",
-    "add_tag": "添加新标签",
     "delete_tag": "删除标签",
     "edit_tag": "编辑标签",
     "search_tags": "搜索标签",
     "enter_new_tag_name": "输入新标签名称",
     "not_found": "未找到标签",
+    "name_exists": "已存在同名标签",
+    "name_save_failed": "无法保存标签名称",
     "load_failed": "无法加载标签状态，请关闭对话框后重试。"
   },
   "subject": {
@@ -303,10 +331,11 @@
   },
   "calendar": {
     "title": "日历",
-    "month_title": "月视图",
-    "day_title": "日视图",
-    "switch_to_month": "切换到月视图",
-    "switch_to_day": "切换到日视图",
+    "tabs": {
+      "years": "年",
+      "months": "月",
+      "days": "日"
+    },
     "day": "日",
     "week": "周",
     "month": "月",
@@ -347,18 +376,18 @@
       "12月"
     ],
     "months_long": [
-      "一月",
-      "二月",
-      "三月",
-      "四月",
-      "五月",
-      "六月",
-      "七月",
-      "八月",
-      "九月",
-      "十月",
-      "十一月",
-      "十二月"
+      "1月",
+      "2月",
+      "3月",
+      "4月",
+      "5月",
+      "6月",
+      "7月",
+      "8月",
+      "9月",
+      "10月",
+      "11月",
+      "12月"
     ]
   },
   "toolbar": {
@@ -389,7 +418,8 @@
         "名称",
         "大小",
         "尺寸",
-        "时长"
+        "时长",
+        "随机"
       ],
       "similarity": "相似度",
       "sort_order_options": [
@@ -479,6 +509,7 @@
         "building_sets": "建立相似组",
         "analyzing": "分析相似照片",
         "groups_title": "相似组",
+        "results": "结果",
         "groups_count": "{count} 个相似组",
         "load_more": "加载更多",
         "error_title": "无法加载相似照片",
@@ -500,9 +531,12 @@
       "keep_label": "保留",
       "unkeep_label": "取消保留",
       "delete_selected": "删除所选项",
+      "delete_all": "删除全部",
       "move_selected_to_trash": "移到废纸篓（已选 {count} 项 · {size}）",
+      "no_removable_files": "没有可移至废纸篓的可删除文件",
       "set_keep": "保留",
-      "duplicate_files_summary": "{count} 个重复项（{size}）"
+      "removable_copies_summary": "{count} 个可删除副本 · {size}",
+      "similar_photos_summary": "{count} 张相似照片 · {size}"
     }
   },
   "tooltip": {
@@ -511,7 +545,7 @@
       "person": "人脸识别仍处于测试阶段，结果可能不准确。"
     },
     "not_found": {
-      "albums": "未找到相册。添加包含照片或视频的文件夹",
+      "albums": "未找到相册",
       "files": "未找到文件",
       "image_search_failed": "图像搜索不可用",
       "image_search_failed_hint": "请检查图像搜索模型是否可用，然后重试。",
@@ -546,6 +580,14 @@
       "success": "相册封面设置成功",
       "failed": "无法设置相册封面"
     },
+    "set_desktop_wallpaper": {
+      "success": "桌面壁纸已更新",
+      "failed": "无法设置桌面壁纸"
+    },
+    "refresh_subfolders": {
+      "success": "已刷新子文件夹",
+      "failed": "无法刷新子文件夹"
+    },
     "copy_image": {
       "success": "已复制 {count} 个文件到剪贴板",
       "limit": "每次最多复制 {count} 个文件。",
@@ -569,7 +611,8 @@
       "first_image": "已经是第一张照片",
       "last_image": "已经是最后一张照片"
     },
-    "album_exists": "此相册已存在"
+    "album_exists": "此相册已存在",
+    "album_nested": "该文件夹与其他相册重叠"
   },
   "statusbar": {
     "files_summary": "{count} 个文件 ({size})"
@@ -586,14 +629,14 @@
       "unpin": "取消固定"
     },
     "library": {
-      "add": "添加库...",
+      "add": "新建库...",
       "edit": "编辑库...",
       "manage": "管理库...",
       "remove": "移除库",
       "default": "默认库"
     },
     "album": {
-      "add": "添加相册...",
+      "add": "新建相册",
       "edit": "相册信息...",
       "scan": "扫描相册",
       "reorder": "重新排序",
@@ -602,7 +645,7 @@
       "exclude_from_search": "从搜索中排除",
       "remove": "移除",
       "delete_folder": "删除文件夹",
-      "refresh": "刷新文件夹"
+      "refresh_subfolders": "刷新子文件夹"
     },
     "file": {
       "new_folder": "新建文件夹",
@@ -616,6 +659,7 @@
       "compare_selected_images": "对比",
       "open_selected_videos_in_app": "在 {app} 中打开视频...",
       "open_in_app": "在外部应用中打开...",
+      "manage_app": "管理应用...",
       "find_similar_images": "查找相关照片",
       "find_person_images": "查找此人物",
       "print": "打印...",
@@ -632,6 +676,8 @@
       "reveal_in_file_explorer": "在文件资源管理器中显示...",
       "refresh_file_info": "刷新文件信息",
       "set_album_cover": "设置为相册封面",
+      "set_as": "设为",
+      "set_desktop_wallpaper": "设为桌面壁纸",
       "show_info": "显示信息",
       "remove_from_collection": "从合集移除"
     },
@@ -643,9 +689,7 @@
     },
     "camera_panel": {
       "camera_title": "相机",
-      "lens_title": "镜头",
-      "switch_to_camera": "切换到相机",
-      "switch_to_lens": "切换到镜头"
+      "lens_title": "镜头"
     },
     "search": {
       "clear_history": "清空搜索历史"
@@ -659,7 +703,6 @@
       "merge": "合并到..."
     },
     "tag": {
-      "add": "添加标签...",
       "rename": "重命名",
       "delete": "删除"
     },
@@ -669,7 +712,7 @@
       "tag": "标签...",
       "collection": "合集...",
       "comment": "备注...",
-      "rotate": "旋转预览"
+      "rotate": "旋转视图"
     },
     "sort": {
       "sort_by_name": "按名称排序",
@@ -727,7 +770,7 @@
       "reorder": "重新排列",
       "rename": "重命名",
       "switch_to": "切换到",
-      "add_new": "添加新库",
+      "add_new": "新建库",
       "add": "添加",
       "placeholder": "输入库的名称",
       "max_limit_reached": "已达到库数量限制",
@@ -807,6 +850,7 @@
       "title": "移到废纸篓",
       "file_content": "文件 '{file}' 将被移到废纸篓。",
       "files_content": "{count} 个选择的文件将被移到废纸篓。",
+      "removable_files_content": "全部 {count} 个可删除文件将被移到废纸篓。",
       "raw_jpeg_companions_content": "还将删除 {count} 个 RAW+JPEG 配对文件。",
       "folder_content": "文件夹 '{folder}' 将被移到废纸篓。",
       "ok": "移到废纸篓",
@@ -821,6 +865,7 @@
       "title": "永久删除",
       "file_content": "文件 '{file}' 将被永久删除。",
       "files_content": "{count} 个选择的文件将被永久删除。",
+      "removable_files_content": "全部 {count} 个可删除文件将被永久删除。",
       "folder_content": "文件夹 '{folder}' 将被永久删除。",
       "checkbox": "永久删除（无法撤销）",
       "ok": "删除",
@@ -845,7 +890,6 @@
     },
     "new_tag": {
       "title": "新建标签",
-      "content": "输入新标签的名称:",
       "ok": "创建",
       "error": "创建标签失败。"
     },
@@ -1034,7 +1078,7 @@
     "satellite": "卫星",
     "heatmap": "热力图",
     "photo_count": "{count} 张照片",
-    "no_photos_in_view": "此区域内没有照片",
+    "no_photos_in_view": "没有照片",
     "photos_in_view": "此区域内有 {count} 张照片",
     "photos_in_view_limited": "显示前 {count} 张照片 - 放大以查看更多"
   },
@@ -1059,6 +1103,8 @@
     }
   },
   "image_viewer": {
+    "live": "实况",
+    "motion": "动态",
     "title": "图像查看器",
     "loading": "加载中...",
     "loading_original": "加载原始照片...",
@@ -1165,14 +1211,17 @@
       "show_status_bar": "显示状态栏",
       "auto_check_updates": "自动检查更新"
     },
-    "library": {
-      "title": "资料库",
+    "browse": {
+      "title": "浏览",
       "section_album": "相册",
       "show_subfolder_files": "显示子文件夹中的文件",
       "show_subfolder_files_hint": "文件夹视图包含子文件夹内的文件",
-      "section_file_grouping": "文件分组",
+      "section_file_display": "文件显示",
       "group_raw_jpeg_pairs": "合并显示 RAW 配对",
       "group_raw_jpeg_pairs_hint": "将同名的 RAW 与 JPEG/HEIC 文件合并显示为一个条目",
+      "small_file_filter": "小文件过滤",
+      "small_file_filter_hint": "仅当宽度和高度均小于所选尺寸时隐藏文件",
+      "small_file_filter_options": ["关闭", "160 px", "320 px", "640 px"],
       "section_sorting": "排序",
       "folder_sort": "文件夹",
       "folder_sort_hint": "相册下显示的文件夹排序方式",
@@ -1201,9 +1250,13 @@
         "数量（从高到低）"
       ]
     },
-    "browse": {
-      "title": "浏览",
+    "grid": {
+      "title": "网格",
       "section_grid": "网格",
+      "section_open": "打开",
+      "dbl_click_thumbnail": "双击缩略图",
+      "dbl_click_quick_preview": "快速预览",
+      "dbl_click_new_window": "在新窗口中打开",
       "style": "样式",
       "style_options": [
         "卡片视图",
@@ -1217,6 +1270,11 @@
         "适应整张照片",
         "裁剪填充",
         "拉伸填充"
+      ],
+      "thumbnail_corners": "缩略图圆角",
+      "thumbnail_corner_options": [
+        "跟随主题",
+        "直角"
       ],
       "label_primary": "卡片视图主标签",
       "label_secondary": "卡片视图副标签",
@@ -1269,10 +1327,10 @@
       ],
       "navigator_view__size": "导航器大小",
       "navigator_view_size_options": [
-        "小(160px)",
-        "中(240px)",
-        "大(320px)",
-        "特大(400px)"
+        "小 (160 px)",
+        "中 (240 px)",
+        "大 (320 px)",
+        "特大 (400 px)"
       ],
       "section_view": "查看",
       "view_background": "背景",
@@ -1313,20 +1371,19 @@
       "downloading_multilingual_model": "正在下载多语言模型",
       "multilingual_model_download_success": "多语言搜索模型已就绪。重启 Lap 后生效。",
       "multilingual_model_download_failed": "多语言搜索模型下载失败",
-      "find_similar": "查找相关照片",
       "similarity": "搜索相似度",
-      "similarity_hint": "越高越相近，越低结果越多。",
+      "similarity_hint": "控制关键词搜索中的视觉匹配",
       "similarity_options": [
-        "极高",
-        "高",
-        "中",
-        "低"
+        "严格",
+        "聚焦",
+        "标准",
+        "宽松"
       ]
     },
     "similar_photos": {
       "title": "相似照片",
       "grouping_strictness": "分组严格度",
-      "grouping_strictness_hint": "控制照片需多相似才会归入同一个相似组。",
+      "grouping_strictness_hint": "控制照片需多相似才会归入同一个相似组",
       "grouping_strictness_options": [
         "极严格",
         "严格",
@@ -1355,7 +1412,9 @@
         "next_image": "下一张",
         "first_image": "第一张",
         "last_image": "最后一张",
-        "quick_preview": "快速预览",
+        "page_up": "向上翻页",
+        "page_down": "向下翻页",
+        "quick_preview": "打开快速预览",
         "close_viewer": "关闭查看器",
         "search_similar": "查找相关照片",
         "show_info": "显示信息",
@@ -1396,19 +1455,53 @@
         "edit_tags": "编辑标签",
         "edit_collections": "编辑合集",
         "edit_comment": "编辑备注",
-        "rotate": "旋转预览",
+        "rotate": "旋转视图（顺时针）",
+        "rotate_counterclockwise": "旋转视图（逆时针）",
         "thumbnail_increase": "放大缩略图",
         "thumbnail_decrease": "缩小缩略图"
       }
     },
     "advanced": {
       "title": "高级",
+      "section_thumbnail_cache": "缩略图缓存",
+      "thumbnail_quality": "缩略图质量",
+      "thumbnail_quality_hint": "控制生成缩略图的分辨率。更高设置更清晰，但生成更慢且占用更多磁盘空间",
+      "raw_thumbnail_source": "RAW 缩略图来源",
+      "raw_thumbnail_source_hint": "选择 RAW 文件的缩略图生成方式",
+      "raw_thumbnail_source_options": [
+        "RAW 渲染（默认）",
+        "嵌入式预览（更快）"
+      ],
+      "section_map": "地图",
+      "map_provider": "地图服务提供者",
+      "map_provider_hint": "选择地图视图使用的地图服务",
+      "map_provider_options": [
+        "全球（默认）",
+        "中国（天地图）"
+      ],
+      "tianditu_token": "天地图 API Token",
+      "tianditu_token_hint": "使用天地图瓦片时需要提供",
+      "tianditu_token_placeholder": "粘贴你的 Token",
+      "tianditu_token_status_saved": "已保存",
+      "tianditu_token_status_empty": "未配置",
+      "clean_unused_thumbnails": "清理未使用的缩略图缓存",
+      "clean_unused_thumbnails_hint": "移除当前图库中不再关联任何文件的已缓存缩略图",
+      "clean": "清理",
+      "thumbnail_cache_cleaned": "已清理 {count} 个缩略图，释放 {size}。",
+      "thumbnail_quality_options": [
+        "低 (256 px)",
+        "标准 (512 px)",
+        "高 (1024 px)"
+      ],
       "section_external_apps": "外部应用",
+      "manage_external_apps": "管理外部应用",
       "external_image_editor": "使用以下应用打开照片",
       "external_video_app": "使用以下应用打开视频",
       "external_app_not_selected": "未选择应用",
       "choose_app": "选择",
       "clear_app": "清除",
+      "default_app": "默认",
+      "set_default_app": "设为默认",
       "section_diagnostics": "诊断",
       "debug_mode": "调试模式"
     },

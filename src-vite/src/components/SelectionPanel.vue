@@ -147,7 +147,7 @@
         </div>
         <div class="flex flex-wrap items-center gap-1">
           <PanelActionButton
-            :icon="IconMove"
+            :icon="IconFileArrowRight"
             :disabled="selectedCount === 0"
             @click="$emit('moveWithinLibrary')"
           >
@@ -187,7 +187,7 @@
             v-for="item in visibleMoreActions"
             :key="item.label"
             :icon="item.icon"
-            :disabled="Boolean(item.disabled)"
+            :disabled="selectedCount === 0 || Boolean(item.disabled)"
             @click="$emit('moreAction', item.action)"
           >
             {{ item.label }}
@@ -215,7 +215,7 @@ import {
   IconUnChecked,
   IconClose,
   IconComment,
-  IconMove,
+  IconFileArrowRight,
   IconRotate,
   IconTag,
   IconTrash,

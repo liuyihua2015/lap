@@ -2,10 +2,9 @@ export interface SmartTagDef {
   id: string;
   // CLIP text prompt should stay in English for stable semantic search.
   prompt: string;
+  // Override only after calibrating this tag against real library results.
+  threshold?: number;
 }
-
-// Smart-tag retrieval usually needs a looser threshold than free-text search.
-export const SMART_TAG_SEARCH_THRESHOLD = 0.2;
 
 export interface SmartTagCategoryDef {
   id: string;

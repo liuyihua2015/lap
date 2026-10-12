@@ -93,11 +93,11 @@ html, body {
 }
 
 @utility sidebar-header-tabs {
-  @apply tabs tabs-sm flex-1 flex-nowrap items-center;
+  @apply tabs tabs-sm flex-1 flex-nowrap items-center gap-3;
 }
 
 @utility sidebar-header-tab {
-  @apply tab whitespace-nowrap;
+  @apply tab h-10 px-0 min-w-0 whitespace-nowrap font-bold uppercase text-xs tracking-wide leading-none;
 }
 
 .sidebar-header-tab.tab-active {
@@ -159,4 +159,79 @@ html, body {
   border-color: color-mix(in srgb, var(--color-warning) 50%, white 16%);
   background: color-mix(in srgb, var(--color-warning) 22%, black 48%);
   color: color-mix(in srgb, white 88%, var(--color-warning) 12%);
+}
+
+.map-photo-marker-wrapper {
+  background: transparent;
+  border: 0;
+}
+
+.map-photo-marker {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  overflow: visible;
+}
+
+.map-photo-marker::after {
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 0;
+  height: 0;
+  border-top: 8px solid white;
+  border-right: 7px solid transparent;
+  border-left: 7px solid transparent;
+  content: '';
+  transform: translateX(-50%);
+}
+
+.map-photo-marker img {
+  display: block;
+  width: 64px;
+  height: 64px;
+  aspect-ratio: 1;
+  border: 2px solid white;
+  border-radius: 6px;
+  object-fit: cover;
+  box-shadow: 0 2px 7px rgb(0 0 0 / 35%);
+}
+
+.map-photo-marker span {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  min-width: 18px;
+  padding: 1px 4px;
+  border: 1px solid white;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+}
+
+.photo-map-view .leaflet-control-scale {
+  margin: 0 0 10px 10px;
+}
+
+.photo-map-view .leaflet-control-scale-line {
+  border: 1px solid color-mix(in srgb, var(--color-base-content) 45%, transparent);
+  border-radius: var(--radius-box);
+  background: color-mix(in srgb, var(--color-base-100) 72%, transparent);
+  color: var(--color-base-content);
+  text-shadow: none;
+  backdrop-filter: blur(6px);
+}
+
+/* Trigger Chromium to composite map tiles consistently without resizing them. */
+.photo-map-view .leaflet-tile,
+.file-info-map-view .leaflet-tile {
+  outline: 1px solid transparent;
+}
+
+.leaflet-container {
+  background: transparent !important;
 }

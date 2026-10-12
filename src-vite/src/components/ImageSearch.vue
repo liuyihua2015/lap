@@ -56,22 +56,22 @@
           <IconSearch class="mx-1 h-5 shrink-0" />
           
           <span class="sidebar-item-label">{{ typeof item === 'string' ? item : item.text }}</span>
-          <span
-            v-if="hasSearchHistoryCount(item)"
-            class="sidebar-item-count"
-            :class="libConfig.search.searchHistoryIndex === index ? 'hidden' : 'group-hover:hidden'"
-          >{{ formatSearchResultCount(getSearchHistoryCount(item)) }}</span>
-          <div
-            :class="[
-              'ml-auto flex flex-row items-center text-base-content/30',
-              libConfig.search.searchHistoryIndex === index ? '' : 'hidden group-hover:flex'
-            ]"
-          >
-            <ContextMenu
-              :iconMenu="IconMore"
-              :menuItems="() => getSearchHistoryMenuItems(index)"
-              :smallIcon="true"
-            />
+          <div class="ml-auto flex flex-row items-center text-base-content/30">
+            <span
+              v-if="hasSearchHistoryCount(item)"
+              class="sidebar-item-count shrink-0"
+            >{{ formatSearchResultCount(getSearchHistoryCount(item)) }}</span>
+            <div
+              :class="[
+                libConfig.search.searchHistoryIndex === index ? '' : 'hidden group-hover:flex'
+              ]"
+            >
+              <ContextMenu
+                :iconMenu="IconMore"
+                :menuItems="() => getSearchHistoryMenuItems(index)"
+                :smallIcon="true"
+              />
+            </div>
           </div>
         </div>  
     </div>
@@ -178,8 +178,8 @@ function handleSearchHistoryClick(index: number) {
   const item = libConfig.search.searchHistory[index];
   const searchText = typeof item === 'string' ? item : item?.text;
   if (searchText) {
-    uiStore.searchCountRequestedFor = searchText;
-    uiStore.searchCountRequestTick++;
+    libConfig.search.searchText = searchText;
+    uiStore.requestCountUpdate({ source: 'search', text: searchText });
   }
   libConfig.search.searchHistoryIndex = index;
 }
@@ -209,8 +209,6 @@ function handleSearch() {
   if (searchQuery.value.trim().length === 0) return;
   
   const query = searchQuery.value.trim();
-  uiStore.searchCountRequestedFor = query;
-  uiStore.searchCountRequestTick++;
   const history = libConfig.search.searchHistory as any[];
   
   // Find existing index considering both string and object formats
@@ -233,6 +231,7 @@ function handleSearch() {
   }
 
   libConfig.search.searchText = query;
+  uiStore.requestCountUpdate({ source: 'search', text: query });
 }
 
 function handleEscKey() {
@@ -240,13 +239,12 @@ function handleEscKey() {
 }
 
 const searchHistoryList = computed(() => libConfig.search.searchHistory as any[]);
-const getSearchHistoryCount = (item: any) => Number(item?.count || 0);
-const hasSearchHistoryCount = (item: any) => typeof item !== 'string' && Number(item?.count || 0) > 0;
+const getSearchHistoryCount = (item: any) => {
+  return Number(typeof item === 'string' ? 0 : item?.count || 0);
+};
+const hasSearchHistoryCount = (item: any) => getSearchHistoryCount(item) > 0;
 const formatSearchResultCount = (count: number) => {
-  const limit = Number(config.settings.imageSearch.limit || 0);
-  return limit > 0 && count >= limit
-    ? `${limit.toLocaleString()}+`
-    : count.toLocaleString();
+  return count.toLocaleString();
 };
 
 function showClearConfirmation() {

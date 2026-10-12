@@ -15,12 +15,14 @@
   },
   "collection": {
     "title": "Коллекции",
-    "add": "Добавить коллекцию",
+    "add": "Новая коллекция",
     "edit_collections": "Изменить коллекции",
     "recent": "Недавние коллекции",
     "search": "Поиск коллекций",
     "enter_new_collection_name": "Название новой коллекции",
     "not_found": "Коллекции не найдены",
+    "name_exists": "Коллекция с таким именем уже существует",
+    "name_save_failed": "Не удалось сохранить имя коллекции",
     "default_name": "Коллекция {index}",
     "expand": "Развернуть",
     "collapse": "Свернуть",
@@ -57,7 +59,7 @@
     "smart_album_list": "Смарт-альбомы",
     "search_smart_albums": "Поиск смарт-альбомов",
     "no_smart_albums_found": "Смарт-альбомы не найдены",
-    "add_smart_album": "Добавить смарт-альбом",
+    "add_smart_album": "Новый смарт-альбом",
     "folder_unavailable": {
       "title": "Папка недоступна",
       "description": "Подключите накопитель повторно или проверьте расположение папки."
@@ -67,7 +69,7 @@
       "description": "Возможно, папка была перемещена или удалена. Обновите родительскую папку."
     },
     "edit": {
-      "title_add": "Добавить альбом",
+      "title_add": "Новый альбом",
       "title": "Инфо альбома",
       "folder": "Папка",
       "select_folder": "Выберите папку",
@@ -101,8 +103,8 @@
       "description": "Создавайте смарт-альбомы из пользовательских правил запроса."
     },
     "smart_edit": {
-      "title_add": "Добавить смарт-альбом",
-      "title_edit": "Редактировать...",
+      "title_add": "Новый смарт-альбом",
+      "title_edit": "Редактировать смарт-альбом",
       "reorder": "Изменить порядок",
       "name": "Название",
       "description": "Описание",
@@ -149,8 +151,8 @@
         "location": "Место"
       },
       "media_subtypes": {
-        "live_photo": "Live Photo",
-        "raw_jpeg_pair": "RAW-пара"
+        "raw_jpeg_pair": "RAW-пара",
+        "live_motion_photos": "Живые и динамические фото"
       },
       "operators": {
         "is": "=",
@@ -197,10 +199,35 @@
       }
     }
   },
+  "import_organize": {
+    "section_folders": "Выбор папки",
+    "section_status": "Состояние импорта",
+    "to_import": "К импорту",
+    "files_progress": "{processed} / {total} файлов ({size})",
+    "source": "Источник",
+    "source_placeholder": "Выберите исходную папку",
+    "destination": "Назначение",
+    "folder_layout": "Структура папок",
+    "layout_day": "По дням — YYYY/YYYY-MM-DD",
+    "layout_month": "По месяцам — YYYY/YYYY-MM",
+    "layout_year": "По годам — YYYY",
+    "layout_none": "Одна папка",
+    "import": "Импортировать",
+    "preparing": "Подготовка импорта",
+    "importing": "Импорт файлов",
+    "complete": "Импорт завершён",
+    "cancelled": "Импорт отменён",
+    "continue": "Продолжить",
+    "imported": "Импортировано: {count}",
+    "skipped": "Пропущено: {count}",
+    "failed": "Ошибок: {count}",
+    "error_nested": "Исходная и целевая папки не могут содержать друг друга",
+    "error_destination_outside": "Целевая папка должна находиться внутри альбома",
+    "error_source": "Не удается получить доступ к исходной папке",
+    "error_failed": "Не удалось импортировать: {message}"
+  },
   "welcome": {
-    "title": "Добро пожаловать в Lap",
-    "description": "Ваша локальная фототека. Быстрая, с поиском и всегда под вашим контролем.",
-    "add_album_title": "Начните с добавления альбома",
+    "add_album_title": "Начните с нового альбома",
     "add_album_description": "Выберите папку и позвольте Lap упорядочить ваши фото и видео.",
     "smart_album_title": "Организуйте с помощью смарт-альбомов",
     "smart_album_description": "Используйте правила, чтобы автоматически группировать подходящие фотографии.",
@@ -280,12 +307,13 @@
   },
   "tag": {
     "title": "Теги",
-    "add_tag": "Добавить тег",
     "delete_tag": "Удалить тег",
     "edit_tag": "Изменить теги",
     "search_tags": "Найти теги",
     "enter_new_tag_name": "Новое имя тега",
     "not_found": "Теги не найдены",
+    "name_exists": "Тег с таким именем уже существует",
+    "name_save_failed": "Не удалось сохранить имя тега",
     "load_failed": "Не удалось загрузить состояние тегов. Закройте это окно и повторите попытку."
   },
   "subject": {
@@ -303,10 +331,11 @@
   },
   "calendar": {
     "title": "Календарь",
-    "month_title": "Месяц",
-    "day_title": "День",
-    "switch_to_month": "На месяц",
-    "switch_to_day": "На день",
+    "tabs": {
+      "years": "Годы",
+      "months": "Месяцы",
+      "days": "Дни"
+    },
     "day": "День",
     "week": "Неделя",
     "month": "Месяц",
@@ -389,7 +418,8 @@
         "Имя",
         "Размер",
         "Измерение",
-        "Длительность"
+        "Длительность",
+        "Случайно"
       ],
       "similarity": "Сходство",
       "sort_order_options": [
@@ -479,6 +509,7 @@
         "building_sets": "Создание похожих групп",
         "analyzing": "Анализ похожих фотографий",
         "groups_title": "Похожие группы",
+        "results": "Результаты",
         "groups_count": "{count} похожих групп",
         "load_more": "Загрузить ещё",
         "error_title": "Не удалось загрузить похожие фотографии",
@@ -500,9 +531,12 @@
       "keep_label": "Оставить",
       "unkeep_label": "Не сохранять",
       "delete_selected": "Удалить выбранное",
+      "delete_all": "Удалить все",
       "move_selected_to_trash": "Удалить в Корзину ({count} выбрано · {size})",
+      "no_removable_files": "Нет удаляемых файлов для перемещения в Корзину",
       "set_keep": "Оставить",
-      "duplicate_files_summary": "Дубликатов: {count} ({size})"
+      "removable_copies_summary": "{count} удаляемых копий · {size}",
+      "similar_photos_summary": "{count} похожих фото · {size}"
     }
   },
   "tooltip": {
@@ -511,7 +545,7 @@
       "person": "Распознавание лиц находится на стадии бета-тестирования и может работать неточно."
     },
     "not_found": {
-      "albums": "Альбомы не найдены. Добавьте папку с фотографиями или видео",
+      "albums": "Альбомы не найдены",
       "files": "Файлы не найдены",
       "image_search_failed": "Поиск изображений недоступен",
       "image_search_failed_hint": "Проверьте доступность модели поиска изображений и повторите попытку.",
@@ -546,6 +580,14 @@
       "success": "Обложка установлена",
       "failed": "Ошибка установки обложки"
     },
+    "set_desktop_wallpaper": {
+      "success": "Обои рабочего стола обновлены",
+      "failed": "Не удалось установить обои рабочего стола"
+    },
+    "refresh_subfolders": {
+      "success": "Подпапки обновлены",
+      "failed": "Не удалось обновить подпапки"
+    },
     "copy_image": {
       "success": "Скопировано файлов в буфер обмена: {count}",
       "limit": "За один раз можно скопировать не более {count} файлов.",
@@ -569,7 +611,8 @@
       "first_image": "Первое фото",
       "last_image": "Последнее фото"
     },
-    "album_exists": "Альбом уже существует"
+    "album_exists": "Альбом уже существует",
+    "album_nested": "Эта папка пересекается с другим альбомом"
   },
   "statusbar": {
     "files_summary": "Файлов: {count} ({size})"
@@ -586,14 +629,14 @@
       "unpin": "Открепить"
     },
     "library": {
-      "add": "Добавить библиотеку...",
+      "add": "Новая библиотека...",
       "edit": "Редактировать библиотеку...",
       "manage": "Управление...",
       "remove": "Удалить библиотеку",
       "default": "По умолчанию"
     },
     "album": {
-      "add": "Добавить альбом...",
+      "add": "Новый альбом",
       "edit": "Инфо альбома...",
       "scan": "Сканировать",
       "reorder": "Изменить порядок",
@@ -602,7 +645,7 @@
       "exclude_from_search": "Исключить из поиска",
       "remove": "Удалить",
       "delete_folder": "Удалить папку",
-      "refresh": "Обновить папку"
+      "refresh_subfolders": "Обновить подпапки"
     },
     "file": {
       "new_folder": "Новая папка",
@@ -616,6 +659,7 @@
       "compare_selected_images": "Сравнить",
       "open_selected_videos_in_app": "Открыть видео в {app}...",
       "open_in_app": "Открыть во внешнем приложении...",
+      "manage_app": "Управление приложениями...",
       "find_similar_images": "Найти связанные фотографии",
       "find_person_images": "Найти этого человека",
       "print": "Печать...",
@@ -632,6 +676,8 @@
       "reveal_in_file_explorer": "Показать в Проводнике...",
       "refresh_file_info": "Обновить сведения о файле",
       "set_album_cover": "Сделать обложкой",
+      "set_as": "Установить как",
+      "set_desktop_wallpaper": "Установить как обои рабочего стола",
       "show_info": "Показать инфо",
       "remove_from_collection": "Удалить из коллекции"
     },
@@ -643,9 +689,7 @@
     },
     "camera_panel": {
       "camera_title": "Камеры",
-      "lens_title": "Объективы",
-      "switch_to_camera": "Переключить на камеры",
-      "switch_to_lens": "Переключить на объективы"
+      "lens_title": "Объективы"
     },
     "search": {
       "clear_history": "Очистить историю"
@@ -659,7 +703,6 @@
       "merge": "Объединить с..."
     },
     "tag": {
-      "add": "Добавить тег...",
       "rename": "Переименовать",
       "delete": "Удалить"
     },
@@ -669,7 +712,7 @@
       "tag": "Теги...",
       "collection": "Коллекции...",
       "comment": "Комментарии...",
-      "rotate": "Повернуть предпросмотр"
+      "rotate": "Повернуть вид"
     },
     "sort": {
       "sort_by_name": "По имени",
@@ -727,7 +770,7 @@
       "reorder": "Порядок",
       "rename": "Переименовать",
       "switch_to": "Переключить на",
-      "add_new": "Добавить новую",
+      "add_new": "Новая библиотека",
       "add": "Добавить",
       "placeholder": "Имя библиотеки",
       "max_limit_reached": "Достигнут лимит",
@@ -807,6 +850,7 @@
       "title": "Удаление в Корзину",
       "file_content": "Файл '{file}' будет перемещён в Корзину.",
       "files_content": "Выбранные файлы ({count} шт.) будут перемещены в Корзину.",
+      "removable_files_content": "Все {count} удаляемых файлов будут перемещены в Корзину.",
       "raw_jpeg_companions_content": "Также будут удалены {count} связанных файлов RAW+JPEG.",
       "folder_content": "Папка '{folder}' будет перемещена в Корзину.",
       "ok": "Переместить",
@@ -821,6 +865,7 @@
       "title": "Удалить безвозвратно",
       "file_content": "Файл '{file}' будет удалён безвозвратно.",
       "files_content": "Выбранные файлы ({count} шт.) будут удалены безвозвратно.",
+      "removable_files_content": "Все {count} удаляемых файлов будут удалены безвозвратно.",
       "folder_content": "Папка '{folder}' будет удалена безвозвратно.",
       "checkbox": "Удалить безвозвратно (вернуть нельзя)",
       "ok": "Удалить",
@@ -845,7 +890,6 @@
     },
     "new_tag": {
       "title": "Новый тег",
-      "content": "Имя тега:",
       "ok": "Создать",
       "error": "Не удалось создать тег."
     },
@@ -1034,7 +1078,7 @@
     "satellite": "Спутник",
     "heatmap": "Тепловая карта",
     "photo_count": "{count} фото",
-    "no_photos_in_view": "В этой области нет фото",
+    "no_photos_in_view": "Нет фотографий",
     "photos_in_view": "{count} фото в этой области",
     "photos_in_view_limited": "Показаны первые {count} фото - увеличьте масштаб для уточнения"
   },
@@ -1059,6 +1103,8 @@
     }
   },
   "image_viewer": {
+    "live": "LIVE",
+    "motion": "MOTION",
     "title": "Просмотр изображений",
     "loading": "Загрузка...",
     "loading_original": "Загрузка исходной фотографии...",
@@ -1165,14 +1211,17 @@
       "show_status_bar": "Строка состояния",
       "auto_check_updates": "Автоматически проверять обновления"
     },
-    "library": {
-      "title": "Библиотека",
+    "browse": {
+      "title": "Обзор",
       "section_album": "Альбом",
       "show_subfolder_files": "Показывать файлы из подпапок",
       "show_subfolder_files_hint": "При просмотре папок отображаются файлы из вложенных папок",
-      "section_file_grouping": "Группировка файлов",
+      "section_file_display": "Отображение файлов",
       "group_raw_jpeg_pairs": "Группировать RAW-пары",
       "group_raw_jpeg_pairs_hint": "Показывать совпадающие файлы RAW и JPEG/HEIC как один элемент",
+      "small_file_filter": "Фильтр маленьких файлов",
+      "small_file_filter_hint": "Скрывает файлы, если ширина и высота меньше выбранного значения",
+      "small_file_filter_options": ["Выключено", "160 px", "320 px", "640 px"],
       "section_sorting": "Сортировка",
       "folder_sort": "Папки",
       "folder_sort_hint": "Порядок сортировки папок, отображаемых внутри альбомов",
@@ -1201,9 +1250,13 @@
         "Количество (убыв.)"
       ]
     },
-    "browse": {
-      "title": "Обзор",
+    "grid": {
+      "title": "Сетка",
       "section_grid": "Сетка",
+      "section_open": "Открытие",
+      "dbl_click_thumbnail": "Дважды щёлкните миниатюру",
+      "dbl_click_quick_preview": "Быстрый просмотр",
+      "dbl_click_new_window": "Открыть в новом окне",
       "style": "Стиль",
       "style_options": [
         "Карточки",
@@ -1217,6 +1270,11 @@
         "Подогнать фотографию целиком",
         "Обрезка",
         "Растягивание"
+      ],
+      "thumbnail_corners": "Углы миниатюр",
+      "thumbnail_corner_options": [
+        "Следовать теме",
+        "Прямые"
       ],
       "label_primary": "1-я подпись карточек",
       "label_secondary": "2-я подпись карточек",
@@ -1313,20 +1371,19 @@
       "downloading_multilingual_model": "Загрузка многоязычной модели",
       "multilingual_model_download_success": "Многоязычная модель поиска готова. Чтобы её использовать, перезапустите программу.",
       "multilingual_model_download_failed": "Не удалось скачать многоязычную модель поиска",
-      "find_similar": "Найти связанные фотографии",
       "similarity": "Сходство поиска",
-      "similarity_hint": "Выше — точнее совпадения, ниже — больше результатов.",
+      "similarity_hint": "Управляет визуальными совпадениями при поиске по ключевым словам",
       "similarity_options": [
-        "Очень высокое",
-        "Высокое",
-        "Среднее",
-        "Низкое"
+        "Строгий",
+        "Точный",
+        "Стандартный",
+        "Широкий"
       ]
     },
     "similar_photos": {
       "title": "Похожие фото",
       "grouping_strictness": "Строгость группировки",
-      "grouping_strictness_hint": "Определяет, насколько похожими должны быть фото, чтобы попасть в одну группу.",
+      "grouping_strictness_hint": "Определяет, насколько похожими должны быть фото, чтобы попасть в одну группу",
       "grouping_strictness_options": [
         "Очень строго",
         "Строго",
@@ -1355,7 +1412,9 @@
         "next_image": "Следующая",
         "first_image": "Первая",
         "last_image": "Последняя",
-        "quick_preview": "Быстрый просмотр",
+        "page_up": "На страницу вверх",
+        "page_down": "На страницу вниз",
+        "quick_preview": "Открыть быстрый просмотр",
         "close_viewer": "Закрыть просмотрщик",
         "search_similar": "Найти связанные фотографии",
         "show_info": "Показать информацию",
@@ -1396,19 +1455,53 @@
         "edit_tags": "Редактировать теги",
         "edit_collections": "Изменить коллекции",
         "edit_comment": "Редактировать комментарий",
-        "rotate": "Повернуть предпросмотр",
+        "rotate": "Повернуть вид по часовой стрелке",
+        "rotate_counterclockwise": "Повернуть вид против часовой стрелки",
         "thumbnail_increase": "Увеличить миниатюры",
         "thumbnail_decrease": "Уменьшить миниатюры"
       }
     },
     "advanced": {
       "title": "Дополнительно",
+      "section_thumbnail_cache": "Кэш миниатюр",
+      "thumbnail_quality": "Качество миниатюр",
+      "thumbnail_quality_hint": "Задаёт разрешение создаваемых миниатюр. При более высоких настройках они выглядят чётче, но создаются дольше и занимают больше места на диске",
+      "raw_thumbnail_source": "Источник миниатюр RAW",
+      "raw_thumbnail_source_hint": "Выберите способ создания миниатюр для RAW-файлов",
+      "raw_thumbnail_source_options": [
+        "Рендеринг RAW (по умолчанию)",
+        "Встроенный предпросмотр (быстрее)"
+      ],
+      "section_map": "Карта",
+      "map_provider": "Поставщик карт",
+      "map_provider_hint": "Выберите картографический сервис для просмотра карты",
+      "map_provider_options": [
+        "Глобальный (по умолчанию)",
+        "Китай (Tianditu)"
+      ],
+      "tianditu_token": "Токен API Tianditu",
+      "tianditu_token_hint": "Требуется для тайлов Tianditu",
+      "tianditu_token_placeholder": "Вставьте токен",
+      "tianditu_token_status_saved": "Сохранено",
+      "tianditu_token_status_empty": "Не настроено",
+      "clean_unused_thumbnails": "Очистить неиспользуемый кэш миниатюр",
+      "clean_unused_thumbnails_hint": "Удаляет кэшированные миниатюры, которые больше не связаны с файлами в этой библиотеке",
+      "clean": "Очистить",
+      "thumbnail_cache_cleaned": "Удалено миниатюр: {count}; освобождено: {size}.",
+      "thumbnail_quality_options": [
+        "Низкое (256 пкс)",
+        "Стандартное (512 пкс)",
+        "Высокое (1024 пкс)"
+      ],
       "section_external_apps": "Внешние приложения",
+      "manage_external_apps": "Управление внешними приложениями",
       "external_image_editor": "Открыть фото с помощью",
       "external_video_app": "Открывать видео в",
       "external_app_not_selected": "Приложение не выбрано",
       "choose_app": "Выбрать",
       "clear_app": "Очистить",
+      "default_app": "По умолчанию",
+      "set_default_app": "Сделать по умолчанию",
       "section_diagnostics": "Диагностика",
       "debug_mode": "Режим отладки"
     },
@@ -1458,7 +1551,7 @@
       "beta_hint": "Бета: пока в разработке",
       "similarity": "Сходство лиц",
       "cluster_threshold": "Порог кластеризации",
-      "cluster_threshold_hint": "Выше = строже, больше людей. Ниже = мягче, может объединять разных людей.",
+      "cluster_threshold_hint": "Выше = строже, больше людей. Ниже = мягче, может объединять разных людей",
       "cluster_threshold_options": [
         "Очень высокое",
         "Высокое",

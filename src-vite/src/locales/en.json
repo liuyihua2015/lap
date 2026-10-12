@@ -15,12 +15,14 @@
   },
   "collection": {
     "title": "Collections",
-    "add": "Add collection",
+    "add": "New collection",
     "edit_collections": "Edit collections",
     "recent": "Recent Collections",
     "search": "Search collections",
     "enter_new_collection_name": "New collection name",
     "not_found": "No collections found",
+    "name_exists": "A collection with this name already exists",
+    "name_save_failed": "Could not save collection name",
     "default_name": "Collection {index}",
     "expand": "Expand",
     "collapse": "Collapse",
@@ -57,7 +59,7 @@
     "smart_album_list": "Smart albums",
     "search_smart_albums": "Search smart albums",
     "no_smart_albums_found": "No smart albums found",
-    "add_smart_album": "Add smart album",
+    "add_smart_album": "New smart album",
     "folder_unavailable": {
       "title": "Folder unavailable",
       "description": "Reconnect the storage device or check the folder location."
@@ -67,7 +69,7 @@
       "description": "The folder may have been moved or deleted. Refresh its parent folder."
     },
     "edit": {
-      "title_add": "Add album",
+      "title_add": "New album",
       "title": "Album Info",
       "folder": "Folder",
       "select_folder": "Select a folder",
@@ -101,8 +103,8 @@
       "description": "Create smart albums from custom query rules."
     },
     "smart_edit": {
-      "title_add": "Add smart album",
-      "title_edit": "Edit...",
+      "title_add": "New smart album",
+      "title_edit": "Edit smart album",
       "reorder": "Reorder",
       "name": "Name",
       "description": "Description",
@@ -149,8 +151,8 @@
         "location": "Location"
       },
       "media_subtypes": {
-        "live_photo": "Live Photo",
-        "raw_jpeg_pair": "RAW Pair"
+        "raw_jpeg_pair": "RAW Pair",
+        "live_motion_photos": "Live & Motion Photos"
       },
       "operators": {
         "is": "=",
@@ -197,10 +199,35 @@
       }
     }
   },
+  "import_organize": {
+    "section_folders": "Select folder",
+    "section_status": "Import status",
+    "to_import": "To import",
+    "files_progress": "{processed} / {total} files ({size})",
+    "source": "Source",
+    "source_placeholder": "Select a source folder",
+    "destination": "Destination",
+    "folder_layout": "Folder layout",
+    "layout_day": "By day — YYYY/YYYY-MM-DD",
+    "layout_month": "By month — YYYY/YYYY-MM",
+    "layout_year": "By year — YYYY",
+    "layout_none": "One folder",
+    "import": "Import",
+    "preparing": "Preparing import",
+    "importing": "Importing files",
+    "complete": "Import complete",
+    "cancelled": "Import cancelled",
+    "continue": "Continue",
+    "imported": "Imported: {count}",
+    "skipped": "Skipped: {count}",
+    "failed": "Failed: {count}",
+    "error_nested": "The source and destination folders cannot contain one another",
+    "error_destination_outside": "The destination folder must be inside the album",
+    "error_source": "Cannot access the source folder",
+    "error_failed": "Import failed: {message}"
+  },
   "welcome": {
-    "title": "Welcome to Lap",
-    "description": "Your local photo library. Fast, searchable, and always under your control.",
-    "add_album_title": "Start by adding an album",
+    "add_album_title": "Start with a new album",
     "add_album_description": "Select a folder and let Lap organize your photos and videos.",
     "smart_album_title": "Organize with smart albums",
     "smart_album_description": "Use rules to automatically group photos that match your criteria.",
@@ -280,12 +307,13 @@
   },
   "tag": {
     "title": "Tags",
-    "add_tag": "Add new tag",
     "delete_tag": "Delete tag",
     "edit_tag": "Edit tags",
     "search_tags": "Search tags",
     "enter_new_tag_name": "Enter new tag name",
     "not_found": "No tags found",
+    "name_exists": "A tag with this name already exists",
+    "name_save_failed": "Could not save tag name",
     "load_failed": "Failed to load tag states. Close this dialog and try again."
   },
   "subject": {
@@ -303,10 +331,11 @@
   },
   "calendar": {
     "title": "Calendar",
-    "month_title": "Month",
-    "day_title": "Day",
-    "switch_to_month": "Switch to Month",
-    "switch_to_day": "Switch to Day",
+    "tabs": {
+      "years": "Years",
+      "months": "Months",
+      "days": "Days"
+    },
     "day": "Day",
     "week": "Week",
     "month": "Month",
@@ -389,7 +418,8 @@
         "Name",
         "Size",
         "Dimension",
-        "Duration"
+        "Duration",
+        "Random"
       ],
       "similarity": "Similarity",
       "sort_order_options": [
@@ -479,6 +509,7 @@
         "building_sets": "Building similar sets",
         "analyzing": "Analyzing similar photos",
         "groups_title": "Similar Sets",
+        "results": "Results",
         "groups_count": "{count} similar sets",
         "load_more": "Load more",
         "error_title": "Unable to load similar photos",
@@ -500,9 +531,12 @@
       "keep_label": "Keep",
       "unkeep_label": "Unkeep",
       "delete_selected": "Delete Selected",
+      "delete_all": "Delete all",
       "move_selected_to_trash": "Move to trash ({count} selected · {size})",
+      "no_removable_files": "No removable files to move to Trash",
       "set_keep": "Keep",
-      "duplicate_files_summary": "{count} duplicates ({size})"
+      "removable_copies_summary": "{count} removable copies · {size}",
+      "similar_photos_summary": "{count} similar photos · {size}"
     }
   },
   "tooltip": {
@@ -511,7 +545,7 @@
       "person": "Face recognition is in beta and may be inaccurate."
     },
     "not_found": {
-      "albums": "No albums found. Add a folder with photos or videos",
+      "albums": "No albums found",
       "files": "No files found",
       "image_search_failed": "Image search unavailable",
       "image_search_failed_hint": "Check that the image search model is available, then try again.",
@@ -546,6 +580,14 @@
       "success": "Album cover set successfully",
       "failed": "Failed to set album cover"
     },
+    "set_desktop_wallpaper": {
+      "success": "Desktop wallpaper updated",
+      "failed": "Failed to set desktop wallpaper"
+    },
+    "refresh_subfolders": {
+      "success": "Subfolders refreshed",
+      "failed": "Failed to refresh subfolders"
+    },
     "copy_image": {
       "success": "{count} file(s) copied to clipboard",
       "limit": "You can copy up to {count} files at a time.",
@@ -569,7 +611,8 @@
       "first_image": "Already the first photo",
       "last_image": "Already the last photo"
     },
-    "album_exists": "This album already exists"
+    "album_exists": "This album already exists",
+    "album_nested": "This folder overlaps another album"
   },
   "statusbar": {
     "files_summary": "{count} files ({size})"
@@ -586,14 +629,14 @@
       "unpin": "Unpin"
     },
     "library": {
-      "add": "Add library...",
+      "add": "New library...",
       "edit": "Edit library...",
       "manage": "Manage libraries...",
       "remove": "Remove library",
       "default": "Default library"
     },
     "album": {
-      "add": "Add album...",
+      "add": "New album",
       "edit": "Album Info...",
       "scan": "Scan album",
       "reorder": "Reorder",
@@ -602,7 +645,7 @@
       "exclude_from_search": "Exclude from search",
       "remove": "Remove",
       "delete_folder": "Delete folder",
-      "refresh": "Refresh folder"
+      "refresh_subfolders": "Refresh subfolders"
     },
     "file": {
       "new_folder": "New folder",
@@ -616,6 +659,7 @@
       "compare_selected_images": "Compare",
       "open_selected_videos_in_app": "Open videos in {app}...",
       "open_in_app": "Open in external app...",
+      "manage_app": "Manage apps...",
       "find_similar_images": "Find related photos",
       "find_person_images": "Find this person",
       "print": "Print...",
@@ -632,6 +676,8 @@
       "reveal_in_file_explorer": "Reveal in File Explorer...",
       "refresh_file_info": "Refresh file info",
       "set_album_cover": "Set as album cover",
+      "set_as": "Set as",
+      "set_desktop_wallpaper": "Set as desktop wallpaper",
       "show_info": "Show info",
       "remove_from_collection": "Remove from Collection"
     },
@@ -643,9 +689,7 @@
     },
     "camera_panel": {
       "camera_title": "Cameras",
-      "lens_title": "Lenses",
-      "switch_to_camera": "Switch to Cameras",
-      "switch_to_lens": "Switch to Lenses"
+      "lens_title": "Lenses"
     },
     "search": {
       "clear_history": "Clear search history"
@@ -659,7 +703,6 @@
       "merge": "Merge into..."
     },
     "tag": {
-      "add": "Add tag...",
       "rename": "Rename",
       "delete": "Delete"
     },
@@ -669,7 +712,7 @@
       "tag": "Tags...",
       "collection": "Collections...",
       "comment": "Comments...",
-      "rotate": "Rotate preview"
+      "rotate": "Rotate view"
     },
     "sort": {
       "sort_by_name": "Sort by name",
@@ -727,7 +770,7 @@
       "reorder": "Reorder",
       "rename": "Rename",
       "switch_to": "Switch to",
-      "add_new": "Add new library",
+      "add_new": "New library",
       "add": "Add",
       "placeholder": "Enter library name",
       "max_limit_reached": "Library limit reached",
@@ -807,6 +850,7 @@
       "title": "Move to trash",
       "file_content": "The file '{file}' will be trashed.",
       "files_content": "{count} selected files will be trashed.",
+      "removable_files_content": "All {count} removable files will be trashed.",
       "raw_jpeg_companions_content": "{count} RAW+JPEG companion file(s) will also be deleted.",
       "folder_content": "The folder '{folder}' will be trashed.",
       "ok": "Trash",
@@ -821,6 +865,7 @@
       "title": "Delete permanently",
       "file_content": "The file '{file}' will be permanently deleted.",
       "files_content": "{count} selected files will be permanently deleted.",
+      "removable_files_content": "All {count} removable files will be permanently deleted.",
       "folder_content": "The folder '{folder}' will be permanently deleted.",
       "checkbox": "Delete permanently (cannot be undone)",
       "ok": "Delete",
@@ -845,7 +890,6 @@
     },
     "new_tag": {
       "title": "New tag",
-      "content": "Enter the name for the new tag:",
       "ok": "Create",
       "error": "Failed to create tag."
     },
@@ -1034,7 +1078,7 @@
     "satellite": "Satellite",
     "heatmap": "Heatmap",
     "photo_count": "{count} photos",
-    "no_photos_in_view": "No photos in this area",
+    "no_photos_in_view": "No photos",
     "photos_in_view": "{count} photos in this area",
     "photos_in_view_limited": "Showing first {count} photos - zoom in for more"
   },
@@ -1059,6 +1103,8 @@
     }
   },
   "image_viewer": {
+    "live": "LIVE",
+    "motion": "MOTION",
     "title": "Image viewer",
     "loading": "Loading...",
     "loading_original": "Loading original photo...",
@@ -1165,14 +1211,17 @@
       "show_status_bar": "Show status bar",
       "auto_check_updates": "Auto-check for updates"
     },
-    "library": {
-      "title": "Library",
+    "browse": {
+      "title": "Browse",
       "section_album": "Album",
       "show_subfolder_files": "Show files from subfolders",
       "show_subfolder_files_hint": "Folder view includes files in child folders",
-      "section_file_grouping": "File grouping",
+      "section_file_display": "File display",
       "group_raw_jpeg_pairs": "Group RAW Pairs",
       "group_raw_jpeg_pairs_hint": "Show matching RAW and JPEG/HEIC files as a single item",
+      "small_file_filter": "Small file filter",
+      "small_file_filter_hint": "Hide files when both width and height are below the selected size",
+      "small_file_filter_options": ["Off", "160 px", "320 px", "640 px"],
       "section_sorting": "Sorting",
       "folder_sort": "Folders",
       "folder_sort_hint": "Sort order for folders shown under albums",
@@ -1201,9 +1250,13 @@
         "Count (High to low)"
       ]
     },
-    "browse": {
-      "title": "Browse",
+    "grid": {
+      "title": "Grid",
       "section_grid": "Grid",
+      "section_open": "Open",
+      "dbl_click_thumbnail": "Double-click thumbnail",
+      "dbl_click_quick_preview": "Quick preview",
+      "dbl_click_new_window": "Open in new window",
       "style": "Style",
       "style_options": [
         "Card view",
@@ -1217,6 +1270,11 @@
         "Fit entire photo",
         "Crop to fill",
         "Stretch to fill"
+      ],
+      "thumbnail_corners": "Thumbnail corners",
+      "thumbnail_corner_options": [
+        "Follow theme",
+        "Square"
       ],
       "label_primary": "Card view primary label",
       "label_secondary": "Card view secondary label",
@@ -1269,10 +1327,10 @@
       ],
       "navigator_view__size": "Navigator size",
       "navigator_view_size_options": [
-        "Small(160px)",
-        "Medium(240px)",
-        "Large(320px)",
-        "Extra Large(400px)"
+        "Small (160 px)",
+        "Medium (240 px)",
+        "Large (320 px)",
+        "Extra Large (400 px)"
       ],
       "section_view": "View",
       "view_background": "Background",
@@ -1313,20 +1371,19 @@
       "downloading_multilingual_model": "Downloading multilingual model",
       "multilingual_model_download_success": "Multilingual search model is ready. Restart Lap to use it.",
       "multilingual_model_download_failed": "Failed to download multilingual search model",
-      "find_similar": "Find related photos",
       "similarity": "Search similarity",
-      "similarity_hint": "Higher finds closer matches; lower finds more results.",
+      "similarity_hint": "Controls visual matches for keyword searches",
       "similarity_options": [
-        "Very high",
-        "High",
-        "Medium",
-        "Low"
+        "Strict",
+        "Focused",
+        "Standard",
+        "Broad"
       ]
     },
     "similar_photos": {
       "title": "Similar photos",
       "grouping_strictness": "Grouping strictness",
-      "grouping_strictness_hint": "Controls how closely photos must match to appear in the same set.",
+      "grouping_strictness_hint": "Controls how closely photos must match to appear in the same set",
       "grouping_strictness_options": [
         "Very strict",
         "Strict",
@@ -1355,7 +1412,9 @@
         "next_image": "Next",
         "first_image": "First",
         "last_image": "Last",
-        "quick_preview": "Quick preview",
+        "page_up": "Page up",
+        "page_down": "Page down",
+        "quick_preview": "Open quick preview",
         "close_viewer": "Close viewer",
         "search_similar": "Find related photos",
         "show_info": "Show info",
@@ -1396,19 +1455,53 @@
         "edit_tags": "Edit tags",
         "edit_collections": "Edit collections",
         "edit_comment": "Edit comment",
-        "rotate": "Rotate preview",
+        "rotate": "Rotate view (clockwise)",
+        "rotate_counterclockwise": "Rotate view (counterclockwise)",
         "thumbnail_increase": "Increase thumbnail size",
         "thumbnail_decrease": "Decrease thumbnail size"
       }
     },
     "advanced": {
       "title": "Advanced",
+      "section_thumbnail_cache": "Thumbnail cache",
+      "thumbnail_quality": "Thumbnail quality",
+      "thumbnail_quality_hint": "Sets the resolution of generated thumbnails. Higher settings look sharper but take longer to generate and use more disk space",
+      "raw_thumbnail_source": "RAW thumbnail source",
+      "raw_thumbnail_source_hint": "Choose how thumbnails are generated for RAW files",
+      "raw_thumbnail_source_options": [
+        "RAW Rendering (default)",
+        "Embedded preview (faster)"
+      ],
+      "section_map": "Map",
+      "map_provider": "Map provider",
+      "map_provider_hint": "Choose the map service for Map view",
+      "map_provider_options": [
+        "Global (default)",
+        "China (Tianditu)"
+      ],
+      "tianditu_token": "Tianditu API token",
+      "tianditu_token_hint": "Required for Tianditu map tiles",
+      "tianditu_token_placeholder": "Paste your token",
+      "tianditu_token_status_saved": "Saved",
+      "tianditu_token_status_empty": "Not configured",
+      "clean_unused_thumbnails": "Clean unused thumbnail cache",
+      "clean_unused_thumbnails_hint": "Removes cached thumbnails that are no longer associated with files in this library",
+      "clean": "Clean",
+      "thumbnail_cache_cleaned": "Cleaned {count} thumbnails, freed {size}.",
+      "thumbnail_quality_options": [
+        "Low (256 px)",
+        "Standard (512 px)",
+        "High (1024 px)"
+      ],
       "section_external_apps": "External apps",
+      "manage_external_apps": "Manage external apps",
       "external_image_editor": "Open photo in",
       "external_video_app": "Open video in",
       "external_app_not_selected": "No app selected",
       "choose_app": "Choose",
       "clear_app": "Clear",
+      "default_app": "Default",
+      "set_default_app": "Set default",
       "section_diagnostics": "Diagnostics",
       "debug_mode": "Debug mode"
     },

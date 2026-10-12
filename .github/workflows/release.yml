@@ -66,7 +66,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libjpeg-turbo8-dev \
-            nasm clang pkg-config libglib2.0-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev patchelf
+            nasm clang pkg-config libglib2.0-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev patchelf zsync
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -163,6 +163,19 @@ jobs:
           projectPath: .
           args: --verbose --target ${{ matrix.target }} --bundles deb,appimage
 
+      - name: Strip bundled Wayland client and add update info
+        if: startsWith(matrix.target, 'x86_64-unknown-linux') || startsWith(matrix.target, 'aarch64-unknown-linux')
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(jq -r '.version' src-tauri/tauri.conf.json)"
+          OWNER_REPO="$(echo "${{ github.repository }}" | tr '/' '|')"
+          export VERSION
+          export UPDATE_INFO="gh-releases-zsync|${OWNER_REPO}|latest|{name_star}.zsync"
+          export ZSYNC_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/{name}"
+          bash scripts/remove_appimage_wayland_client.sh \
+            src-tauri/target/${{ matrix.target }}/release/bundle/appimage
+
       # Notarize and Staple (Sync)
       - name: Notarize and Staple
         if: contains(matrix.platform, 'macos')
@@ -215,6 +228,7 @@ jobs:
             src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb
             src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.sig
             src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
+            src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage.zsync
           if-no-files-found: error
 
       # Rename .app.tar.gz to include architecture so they don't overwrite each other
@@ -274,6 +288,7 @@ jobs:
           find artifacts -name "*.dmg" -exec cp {} release-files/ \;
           find artifacts -name "*.deb" -exec cp {} release-files/ \;
           find artifacts -name "*.AppImage" -exec cp {} release-files/ \;
+          find artifacts -name "*.AppImage.zsync" -exec cp {} release-files/ \;
           find artifacts -name "*.app.tar.gz" -exec cp {} release-files/ \;
           find artifacts -name "*.sig" -exec cp {} release-files/ \; 2>/dev/null || true
           ls -la release-files/

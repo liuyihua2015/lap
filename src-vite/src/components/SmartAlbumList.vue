@@ -73,7 +73,7 @@
           <span v-else-if="reorderingSmartAlbumId !== null" class="p-1 w-6 h-6 shrink-0"></span>
           <div class="w-10 h-10 mr-2 rounded-box shrink-0 overflow-hidden border border-base-content/5 bg-base-content/5">
             <img
-              v-if="getSmartAlbumCoverSrc(smartAlbum) && Number(smartAlbumCoverErrors[smartAlbum.id]) !== Number(smartAlbum.coverFileId)"
+              v-if="getSmartAlbumCount(smartAlbum) > 0 && getSmartAlbumCoverSrc(smartAlbum) && Number(smartAlbumCoverErrors[smartAlbum.id]) !== Number(smartAlbum.coverFileId)"
               :src="getSmartAlbumCoverSrc(smartAlbum)"
               class="w-full h-full object-cover"
               @error="smartAlbumCoverErrors[smartAlbum.id] = Number(smartAlbum.coverFileId)"
@@ -83,20 +83,19 @@
             </div>
           </div>
           <span class="sidebar-item-label">{{ smartAlbum.name }}</span>
-          <div class="ml-auto">
+          <div class="ml-auto flex flex-row items-center text-base-content/30">
             <span
               v-if="hasSmartAlbumCount(smartAlbum)"
-              class="sidebar-item-count"
-              :class="isSmartAlbumSelected(smartAlbum) ? 'hidden' : 'group-hover:hidden'"
+              class="sidebar-item-count shrink-0"
             >{{ getSmartAlbumCount(smartAlbum).toLocaleString() }}</span>
-          </div>
-          <div :class="['flex items-center text-base-content/30', isSmartAlbumSelected(smartAlbum) ? '' : 'hidden group-hover:flex']">
-            <ContextMenu
-              :ref="(element: any) => { if (element) smartAlbumContextMenus[smartAlbum.id] = element }"
-              :iconMenu="IconMore"
-              :menuItems="getMoreMenuItems(smartAlbum)"
-              :smallIcon="true"
-            />
+            <div :class="[isSmartAlbumSelected(smartAlbum) ? '' : 'hidden group-hover:flex']">
+              <ContextMenu
+                :ref="(element: any) => { if (element) smartAlbumContextMenus[smartAlbum.id] = element }"
+                :iconMenu="IconMore"
+                :menuItems="getMoreMenuItems(smartAlbum)"
+                :smallIcon="true"
+              />
+            </div>
           </div>
         </div>
       </li>
@@ -134,7 +133,7 @@ import { VueDraggable } from 'vue-draggable-plus';
 import { config, libConfig } from '@/common/config';
 import { useUIStore } from '@/stores/uiStore';
 import { getThumbUrl, getThumbnailDataUrl, getThumbnailDataUrlInflight, isWin, setThumbnailDataUrlInflight } from '@/common/utils';
-import { getFileThumbById } from '@/common/api';
+import { getFileThumbById, getSmartQueryCountAndSum } from '@/common/api';
 import { IconAdd, IconClose, IconDragHandle, IconEdit, IconMore, IconFolderCog, IconOrder, IconSearch, IconTrash } from '@/common/icons';
 import TButton from '@/components/TButton.vue';
 import ContextMenu from '@/components/ContextMenu.vue';
@@ -165,6 +164,54 @@ const filteredSmartAlbums = computed(() => {
 watch(() => libConfig.smartAlbums, (albums) => {
   customSmartAlbums.value = Array.isArray(albums) ? [...albums] : [];
 }, { immediate: true });
+
+// Counts are computed per smart query. Re-fetch whenever the set of albums or
+// their queries change (id/updatedAt) or the small-file filter changes, so each
+// album shows its own count instead of the currently-viewed query's count.
+const smartAlbumCountSignature = computed(() =>
+  (libConfig.smartAlbums || []).map((album: any) => `${album.id}:${album.updatedAt ?? album.createdAt ?? ''}`).join('|')
+);
+
+async function refreshSmartAlbumCounts() {
+  const albums = customSmartAlbums.value.filter((album: any) => {
+    const rules = Array.isArray(album?.query?.rules) ? album.query.rules : [];
+    return rules.length > 0;
+  });
+  if (albums.length === 0) return;
+
+  const results = await Promise.all(albums.map(async (album: any) => {
+    const query = album.query;
+    try {
+      const params = {
+        version: Number(query.version || 1),
+        match: query.match === 'any' ? 'any' : 'all',
+        rules: query.rules,
+        sortType: Number(album?.sort?.type ?? 0),
+        sortOrder: Number(album?.sort?.order ?? 1),
+        folderSort: Number(config.settings.folderSort || 0),
+        calendarSort: Number(config.settings.calendarSort || 0),
+        categorySort: Number(config.settings.categorySort || 0),
+        smallFileFilter: Number(config.settings.smallFileFilter || 0),
+      };
+      const result = await getSmartQueryCountAndSum(params);
+      return [String(album.id), Number(result?.[0] || 0)] as const;
+    } catch {
+      return [String(album.id), 0] as const;
+    }
+  }));
+
+  const countMap = Object.fromEntries(results);
+  libConfig.smartAlbums = (libConfig.smartAlbums || []).map((album: any) => ({
+    ...album,
+    count: countMap[String(album.id)] ?? 0,
+  }));
+}
+
+watch(
+  () => [smartAlbumCountSignature.value, Number(config.settings.smallFileFilter || 0)],
+  () => { void refreshSmartAlbumCounts(); },
+  { immediate: true },
+);
 
 watch(smartAlbumSearch, () => {
   reorderingSmartAlbumId.value = null;
@@ -205,15 +252,15 @@ watch(
 );
 
 function clickCustomSmartAlbum(smartAlbum: any) {
-  uiStore.smartAlbumCountRequestedFor = String(smartAlbum.id);
-  uiStore.smartAlbumCountRequestTick++;
   libConfig.smartAlbum.type = 'custom';
   libConfig.smartAlbum.id = smartAlbum.id;
 }
 
 const isSmartAlbumSelected = (smartAlbum: any) => libConfig.smartAlbum.type === 'custom' && libConfig.smartAlbum.id === smartAlbum.id;
-const getSmartAlbumCount = (smartAlbum: any) => Number(smartAlbum?.count || 0);
-const hasSmartAlbumCount = (smartAlbum: any) => smartAlbum?.count !== null && smartAlbum?.count !== undefined;
+const getSmartAlbumCount = (smartAlbum: any) => {
+  return Number(smartAlbum?.count || 0);
+};
+const hasSmartAlbumCount = (smartAlbum: any) => getSmartAlbumCount(smartAlbum) > 0;
 
 function clickAddSmartAlbum() {
   editingSmartAlbum.value = null;

@@ -60,7 +60,6 @@
       />
       <IconClose 
         class="p-3 w-12 h-full text-base-content/70 hover:text-base-content hover:bg-red-500 transition-colors duration-300" 
-        @mousedown.stop="closeWindow"
         @click.stop="closeWindow" 
       />
     </div>

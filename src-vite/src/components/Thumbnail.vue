@@ -1,7 +1,8 @@
 <template>
   <div
     :class="[
-      'border-2 rounded-box flex flex-col items-center cursor-pointer group',
+      'border-2 flex flex-col items-center cursor-pointer group',
+      thumbnailCornerClass,
       isTransitionDisabled ? 'transition-none' : 'transition-[background-color,color] ease-in-out duration-150 ',
       config.settings.grid.style === 0 ? 'p-1 w-fit h-fit' : 'w-full h-full',
       isActive
@@ -15,7 +16,8 @@
   >
     <div
       ref="containerRef"
-      class="rounded-box relative flex items-center justify-center overflow-hidden bg-base-200/70"
+      data-thumbnail-container
+      :class="[thumbnailCornerClass, 'relative flex items-center justify-center overflow-hidden bg-base-200/70']"
       :style="layoutStyle"
       @pointerenter="startMediaPreview"
       @pointerleave="stopMediaPreview"
@@ -142,11 +144,11 @@
         class="pointer-events-none absolute left-0.5 bottom-0.5 z-10 flex items-center gap-0.5"
       >
         <div
-          v-if="isLivePhoto"
+          v-if="isLivePhoto || isMotionPhoto"
           class="thumb-badge thumb-badge-muted"
         >
           <IconLivePhoto class="h-3.5 w-3.5 shrink-0" />
-          <span class="leading-none">LIVE</span>
+          <span class="leading-none">{{ isLivePhoto ? t('image_viewer.live') : t('image_viewer.motion') }}</span>
         </div>
         <div
           v-if="isRawJpegPair"
@@ -274,6 +276,10 @@ const props = defineProps({
     type: String as () => 'keep' | 'dup' | '',
     default: '',
   },
+  gridSize: {
+    type: Number,
+    required: true,
+  },
 });
 
 const emit = defineEmits([
@@ -301,6 +307,7 @@ const showAnimatedImagePreview = ref(false);
 const isAnimatedImagePreviewReady = ref(false);
 const isVideoFile = computed(() => props.file?.file_type === 2);
 const isLivePhoto = computed(() => props.file?.media_subtype === 'live_photo' && !!props.file?.live_photo_video_path);
+const isMotionPhoto = computed(() => props.file?.media_subtype === 'motion_photo');
 const isRawJpegPair = computed(() => props.file?.media_subtype === 'raw_jpeg_pair');
 const rawJpegPairBadge = computed(() => {
   const extension = getFileExtension(props.file?.live_photo_video_path || '').toLowerCase();
@@ -321,6 +328,9 @@ const animatedImagePreviewSrc = computed(() => getAssetSrc(props.file?.file_path
 const canPreviewAnimatedImage = computed(() => isAnimatableImageFile.value && !!animatedImagePreviewSrc.value);
 const isGeometryGridStyle = computed(() => config.settings.grid.style === 2 || config.settings.grid.style === 3);
 const shouldScaleThumbnail = computed(() => config.settings.grid.style === 1 || isGeometryGridStyle.value);
+const thumbnailCornerClass = computed(() => (
+  config.settings.grid.thumbnailCorners === 1 ? 'rounded-none' : 'rounded-box'
+));
 const thumbnailSrc = ref(props.file.thumbnail || '');
 const isThumbnailLoaded = ref(false);
 let thumbnailRetryCount = 0;
@@ -513,14 +523,16 @@ function handleContextMenu(event: MouseEvent) {
 
 
 const layoutStyle = computed(() => {
-  const { style, size } = config.settings.grid;
+  const { style } = config.settings.grid;
+  const size = props.gridSize;
   if (style === 0) return { width: `${size}px`, height: `${size}px` };
   if (style === 1) return { width: '100%', height: `${size}px` };
   return { width: '100%', height: '100%' };
 });
 
 const imgStyle = computed((): CSSProperties => {
-  const { style, size } = config.settings.grid;
+  const { style } = config.settings.grid;
+  const size = props.gridSize;
   const isRotated = props.file.rotate && props.file.rotate % 180 !== 0;
 
   if (isRotated) {
@@ -572,15 +584,12 @@ const isContentActive = computed(() =>
 const { locale, messages, t } = useI18n();
 const localeMsg = computed(() => messages.value[locale.value] as any);
 
-const isCollectionView = computed(() => props.querySource === 'collection');
-
 const menuItems = useFileMenuItems(
   toRef(props, 'file'),
   localeMsg,
   isMac,
   t,
   (action) => emit('action', action),
-  { isCollectionView },
 );
 
 const getGridLabelText = (file: any, option: number) => {
@@ -662,7 +671,7 @@ const thumbnailBadge = computed(() => {
 });
 
 const hasBottomMediaBadges = computed(() => (
-  isLivePhoto.value || isRawJpegPair.value || Boolean(videoDurationBadge.value) || Boolean(props.dedupStatus)
+  isLivePhoto.value || isMotionPhoto.value || isRawJpegPair.value || Boolean(videoDurationBadge.value) || Boolean(props.dedupStatus)
 ));
 
 const statusBadges = computed<ThumbnailBadge[]>(() => {
@@ -708,8 +717,8 @@ const statusBadges = computed<ThumbnailBadge[]>(() => {
   }
   
   if (props.file.has_tags) metaIcons.push({ icon: IconTag });
-  if (props.file.comments?.length > 0) metaIcons.push({ icon: IconComment });
   if (props.file.has_collections) metaIcons.push({ icon: IconBookmark });
+  if (props.file.comments?.length > 0) metaIcons.push({ icon: IconComment });
   if (normalizedRotate.value > 0) {
     metaIcons.push({
       icon: IconRotate,

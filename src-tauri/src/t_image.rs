@@ -374,6 +374,11 @@ fn apply_orientation(img: DynamicImage, orientation: i32) -> DynamicImage {
     }
 }
 
+/// Minimum short edge as a fraction of `thumbnail_size` (1/4).
+const MIN_SHORT_EDGE_DIVISOR: u32 = 4;
+
+/// Computes thumbnail dimensions, keeping the short edge >= `thumbnail_size / 4`
+/// (never upscaling); the long edge may exceed `thumbnail_size`.
 fn compute_thumbnail_dimensions(width: u32, height: u32, thumbnail_size: u32) -> (u32, u32) {
     if width == 0 || height == 0 || thumbnail_size == 0 {
         return (1, 1);
@@ -383,8 +388,17 @@ fn compute_thumbnail_dimensions(width: u32, height: u32, thumbnail_size: u32) ->
         return (width.max(1), height.max(1));
     }
 
-    let max_edge = width.max(height) as f32;
-    let scale = thumbnail_size as f32 / max_edge;
+    let long = width.max(height) as f32;
+    let short = width.min(height) as f32;
+    let min_short_edge = (thumbnail_size / MIN_SHORT_EDGE_DIVISOR).max(1) as f32;
+    let fit_scale = thumbnail_size as f32 / long;
+    let fit_short = short * fit_scale;
+    // Keep the short edge at least min_short_edge, but never upscale it.
+    let scale = if fit_short < min_short_edge {
+        (short.min(min_short_edge)) / short
+    } else {
+        fit_scale
+    };
     let dst_w = ((width as f32) * scale).round().max(1.0) as u32;
     let dst_h = ((height as f32) * scale).round().max(1.0) as u32;
     (dst_w, dst_h)
@@ -546,7 +560,7 @@ pub fn generate_directory_thumbnails(
     let dir_root = Path::new(dir_path);
     let files: Vec<PathBuf> = WalkDir::new(dir_path)
         .into_iter()
-        .filter_entry(|e| !crate::t_utils::is_hidden(e))
+        .filter_entry(crate::t_utils::is_visible_or_root)
         .filter_map(|entry| entry.ok())
         .filter(|entry| entry.file_type().is_file())
         .map(|entry| entry.into_path())
@@ -569,7 +583,7 @@ pub fn generate_directory_thumbnails(
 
             let orientation = get_image_orientation(&path_str);
             let thumb = if file_type == 3 {
-                get_raw_thumbnail(&path_str, orientation, thumbnail_size)
+                get_raw_thumbnail(&path_str, orientation, thumbnail_size, false)
             } else {
                 get_image_thumbnail(&path_str, orientation, thumbnail_size)
             };
@@ -614,7 +628,7 @@ pub fn get_image_thumbnail(
     }
 
     if crate::t_libraw::is_tiff_path(file_path) {
-        if let Ok(Some(data)) = crate::t_libraw::get_raw_thumbnail(file_path, thumbnail_size) {
+        if let Ok(Some(data)) = crate::t_libraw::get_raw_thumbnail(file_path, thumbnail_size, false) {
             return Ok(Some(data));
         }
     }
@@ -812,13 +826,16 @@ fn get_jpeg_orientation_from_bytes(data: &[u8]) -> i32 {
         .unwrap_or(1)
 }
 
-pub fn get_raw_preview_image(file_path: &str) -> Result<Option<Vec<u8>>, String> {
-    // Primary: LibRaw handles extraction and rotation
-    if let Ok(Some(data)) = t_libraw::get_raw_preview_image(file_path) {
+pub fn get_raw_preview_image(
+    file_path: &str,
+    prefer_embedded_jpeg: bool,
+) -> Result<Option<Vec<u8>>, String> {
+    if let Ok(Some(data)) = t_libraw::get_raw_preview_image(file_path, prefer_embedded_jpeg) {
         return Ok(Some(data));
     }
 
-    // Fallback: EXIF-based embedded JPEG extraction
+    // Final fallback for unsupported RAW renderers or files without a usable
+    // processed output. The selected source still controls the normal path.
     if let Ok(Some(preview)) = select_embedded_jpeg_for_preview(file_path) {
         let image = image::load_from_memory(&preview)
             .map_err(|e| format!("Failed to decode embedded RAW preview: {}", e))?;
@@ -878,9 +895,13 @@ pub fn get_raw_thumbnail(
     file_path: &str,
     orientation: i32,
     thumbnail_size: u32,
+    prefer_embedded_jpeg: bool,
 ) -> Result<Option<Vec<u8>>, String> {
-    // Primary: LibRaw handles extraction and rotation
-    if let Ok(Some(data)) = t_libraw::get_raw_thumbnail(file_path, thumbnail_size) {
+    if let Ok(Some(data)) = t_libraw::get_raw_thumbnail(
+        file_path,
+        thumbnail_size,
+        prefer_embedded_jpeg,
+    ) {
         return Ok(Some(data));
     }
 
@@ -1324,7 +1345,7 @@ async fn get_generated_preview_bytes(file_path: &str) -> Result<Option<Vec<u8>>,
     let file_type = t_utils::get_file_type(file_path).unwrap_or(0);
 
     if file_type == 3 {
-        return get_raw_preview_image(file_path);
+        return get_raw_preview_image(file_path, false);
     }
 
     if t_jxl::is_jxl_path(file_path) {
@@ -1332,7 +1353,7 @@ async fn get_generated_preview_bytes(file_path: &str) -> Result<Option<Vec<u8>>,
     }
 
     if crate::t_libraw::is_tiff_path(file_path) {
-        return match get_raw_preview_image(file_path) {
+        return match get_raw_preview_image(file_path, false) {
             Ok(Some(data)) => Ok(Some(data)),
             _ => {
                 #[cfg(target_os = "macos")]
@@ -1671,6 +1692,7 @@ const FILE_IMAGE_RESULT_CACHE_MAX: usize = 8;
 #[derive(Clone)]
 struct FileImageCacheEntry {
     signature: (u64, u128),
+    prefer_embedded_raw_preview: bool,
     data: Vec<u8>,
 }
 
@@ -1687,9 +1709,16 @@ impl FileImageResultCache {
         }
     }
 
-    fn get(&mut self, file_path: &str, signature: (u64, u128)) -> Option<Vec<u8>> {
+    fn get(
+        &mut self,
+        file_path: &str,
+        signature: (u64, u128),
+        prefer_embedded_raw_preview: bool,
+    ) -> Option<Vec<u8>> {
         let entry = self.entries.get(file_path)?;
-        if entry.signature != signature {
+        if entry.signature != signature
+            || entry.prefer_embedded_raw_preview != prefer_embedded_raw_preview
+        {
             self.entries.remove(file_path);
             self.order.retain(|item| item != file_path);
             return None;
@@ -1700,9 +1729,21 @@ impl FileImageResultCache {
         Some(entry.data.clone())
     }
 
-    fn insert(&mut self, file_path: String, signature: (u64, u128), data: Vec<u8>) {
-        self.entries
-            .insert(file_path.clone(), FileImageCacheEntry { signature, data });
+    fn insert(
+        &mut self,
+        file_path: String,
+        signature: (u64, u128),
+        prefer_embedded_raw_preview: bool,
+        data: Vec<u8>,
+    ) {
+        self.entries.insert(
+            file_path.clone(),
+            FileImageCacheEntry {
+                signature,
+                prefer_embedded_raw_preview,
+                data,
+            },
+        );
         self.order.retain(|item| item != &file_path);
         self.order.push_back(file_path);
 
@@ -1729,7 +1770,10 @@ fn get_file_signature(file_path: &str) -> Result<(u64, u128), String> {
     Ok((metadata.len(), modified))
 }
 
-pub async fn get_file_image_bytes_cached(file_path: &str) -> Result<Vec<u8>, String> {
+pub async fn get_file_image_bytes_cached(
+    file_path: &str,
+    prefer_embedded_raw_preview: bool,
+) -> Result<Vec<u8>, String> {
     let file_type = t_utils::get_file_type(file_path).unwrap_or(0);
     let cache_signature = if should_generate_preview_for_file(file_path, file_type) {
         Some(get_file_signature(file_path)?)
@@ -1739,14 +1783,14 @@ pub async fn get_file_image_bytes_cached(file_path: &str) -> Result<Vec<u8>, Str
 
     if let Some(signature) = cache_signature {
         if let Ok(mut cache) = FILE_IMAGE_RESULT_CACHE.lock() {
-            if let Some(cached) = cache.get(file_path, signature) {
+            if let Some(cached) = cache.get(file_path, signature, prefer_embedded_raw_preview) {
                 return Ok(cached);
             }
         }
     }
 
     let image_data = if file_type == 3 {
-        get_raw_preview_image(file_path)?
+        get_raw_preview_image(file_path, prefer_embedded_raw_preview)?
             .ok_or_else(|| format!("Failed to resolve RAW preview image: {}", file_path))?
     } else if t_jxl::is_jxl_path(file_path) {
         t_jxl::get_jxl_preview_image(file_path, 4096)?
@@ -1767,7 +1811,7 @@ pub async fn get_file_image_bytes_cached(file_path: &str) -> Result<Vec<u8>, Str
         get_image_thumbnail(file_path, get_image_orientation(file_path), 4096)?
             .ok_or_else(|| format!("Failed to resolve AVIF preview image: {}", file_path))?
     } else if crate::t_libraw::is_tiff_path(file_path) {
-        match get_raw_preview_image(file_path) {
+        match get_raw_preview_image(file_path, false) {
             Ok(Some(data)) => data,
             _ => tokio::fs::read(file_path)
                 .await
@@ -1781,7 +1825,12 @@ pub async fn get_file_image_bytes_cached(file_path: &str) -> Result<Vec<u8>, Str
 
     if let Some(signature) = cache_signature {
         if let Ok(mut cache) = FILE_IMAGE_RESULT_CACHE.lock() {
-            cache.insert(file_path.to_string(), signature, image_data.clone());
+            cache.insert(
+                file_path.to_string(),
+                signature,
+                prefer_embedded_raw_preview,
+                image_data.clone(),
+            );
         }
     }
 

@@ -126,8 +126,9 @@ let nextBackendRequestId = 0;
 const activeBackendRequestIds: Array<number | null> = [null, null];
 const loadAttemptCleanups: Array<(() => void) | null> = [null, null];
 
-const externalVideoAppPath = computed(() => String(config.settings?.externalVideoAppPath || '').trim());
-const externalVideoAppName = computed(() => String(config.settings?.externalVideoAppName || '').trim());
+const externalVideoApp = computed(() => config.defaultExternalApp('video'));
+const externalVideoAppPath = computed(() => String(externalVideoApp.value?.path || '').trim());
+const externalVideoAppName = computed(() => String(externalVideoApp.value?.name || '').trim());
 const canOpenExternalApp = computed(() => !!(props.filePath && externalVideoAppPath.value));
 const externalOpenLabel = computed(() => {
   if (externalVideoAppName.value) {
@@ -314,6 +315,23 @@ const updateTransform = (options: boolean | { resetRotation?: boolean, recalcSca
     }
   }
 
+  if (videoWidth && videoHeight && containerWidth && containerHeight) {
+    const width = (isRotated ? videoHeight : videoWidth) * scale.value;
+    const height = (isRotated ? videoWidth : videoHeight) * scale.value;
+    // Match Image.vue's clampPosition per axis, including its pixel rounding:
+    // center content that fits, otherwise keep its edges outside the viewport.
+    const limitX = (width - containerWidth) / 2;
+    const limitY = (height - containerHeight) / 2;
+    viewportOffset.value = {
+      x: Math.floor(width) > containerWidth
+        ? Math.min(Math.max(viewportOffset.value.x, -limitX), limitX)
+        : 0,
+      y: Math.floor(height) > containerHeight
+        ? Math.min(Math.max(viewportOffset.value.y, -limitY), limitY)
+        : 0,
+    };
+  }
+
   video.style.transform = `translate(calc(-50% + ${viewportOffset.value.x}px), calc(-50% + ${viewportOffset.value.y}px)) rotate(${rotate.value}deg) scale(${scale.value})`;
 
   emit('scale', { scale: scale.value, displayScale: scale.value, minScale: 0.1, maxScale: 10 });
@@ -329,7 +347,7 @@ function refreshFullscreenLayout(index: number) {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       if (activeVideo.value === index) {
-        updateTransform({ recalcScale: true });
+        updateTransform({ recalcScale: isFit.value });
       }
     });
   });
@@ -780,9 +798,10 @@ function handlePinchPointerEnd(event: PointerEvent) {
 }
 
 function handleGlobalPinchWheel(event: WheelEvent) {
-  if (!event.ctrlKey) return;
-  if (!videoContainer.value) return;
-  const rect = (videoContainer.value as HTMLElement).getBoundingClientRect();
+  if (!event.ctrlKey || !props.isActive) return;
+  const container = getTransformContainer(getActivePlayer());
+  if (!container) return;
+  const rect = container.getBoundingClientRect();
   if (
     event.clientX < rect.left || event.clientX > rect.right ||
     event.clientY < rect.top || event.clientY > rect.bottom
@@ -797,15 +816,43 @@ function handleGlobalPinchWheel(event: WheelEvent) {
 // Browser-matching exp formula for touchpad pinch (small deltaY); coarser fixed
 // step for Ctrl+mouse-wheel (deltaY ~100 per notch).
 function applyZoomFromWheel(event: WheelEvent) {
+  if (event.deltaY === 0) return;
+  let newScale: number;
   const isPinch = event.ctrlKey && event.deltaMode === 0 && Math.abs(event.deltaY) < 50;
   if (isPinch) {
-    scale.value = Math.max(0.1, Math.min(10, scale.value * Math.exp(-event.deltaY / 96)));
+    newScale = Math.max(0.1, Math.min(10, scale.value * Math.exp(-event.deltaY / 96)));
   } else {
     const zoomFactor = 0.1;
-    scale.value = event.deltaY < 0
+    newScale = event.deltaY < 0
       ? Math.min(scale.value * (1 + zoomFactor), 10)
       : Math.max(scale.value * (1 - zoomFactor), 0.1);
   }
+  zoomAtCursor(event, newScale);
+}
+
+function zoomAtCursor(event: WheelEvent, newScale: number) {
+  const container = getTransformContainer(getActivePlayer());
+  if (container) {
+    const rect = container.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      // Convert the cursor to layout coordinates, accounting for UI scaling.
+      const x = (event.clientX - rect.left) * container.clientWidth / rect.width - container.clientWidth / 2;
+      const y = (event.clientY - rect.top) * container.clientHeight / rect.height - container.clientHeight / 2;
+      zoomAtPosition(x, y, newScale);
+      return;
+    }
+  }
+  zoomAtPosition(0, 0, newScale);
+}
+
+// Coordinates are relative to the viewport center; buttons use (0, 0).
+function zoomAtPosition(x: number, y: number, newScale: number) {
+  const ratio = newScale / scale.value;
+  viewportOffset.value = {
+    x: x - (x - viewportOffset.value.x) * ratio,
+    y: y - (y - viewportOffset.value.y) * ratio,
+  };
+  scale.value = newScale;
   isFit.value = false;
   updateTransform();
 }
@@ -821,7 +868,7 @@ onMounted(async () => {
 
   if (videoContainer.value) {
     resizeObserver = new ResizeObserver(() => {
-      updateTransform({ recalcScale: true });
+      updateTransform({ recalcScale: isFit.value });
     });
     resizeObserver.observe(videoContainer.value);
     const el = videoContainer.value as HTMLElement;
@@ -911,19 +958,16 @@ watch(() => props.isActive, (isActive) => {
 });
 
 const zoomIn = () => {
-  scale.value = Math.min(scale.value * 2, 10);
-  updateTransform();
+  zoomAtPosition(0, 0, Math.min(scale.value * 2, 10));
 };
 const zoomOut = () => {
-  scale.value = Math.max(scale.value / 2, 0.1);
-  updateTransform();
+  zoomAtPosition(0, 0, Math.max(scale.value / 2, 0.1));
 };
 const zoomActual = () => {
-  scale.value = 1;
-  updateTransform();
+  zoomAtPosition(0, 0, 1);
 };
-const rotateRight = () => {
-  rotate.value = (rotate.value + 90) % 360;
+const rotateView = (delta = 90) => {
+  rotate.value += delta;
   updateTransform();
 };
 const togglePlay = () => {
@@ -1014,7 +1058,7 @@ defineExpose({
   zoomIn,
   zoomOut,
   zoomActual,
-  rotateRight,
+  rotateView,
   togglePlay,
   getViewportState,
   applyViewportState,
@@ -1083,27 +1127,18 @@ function handleWheel(event: WheelEvent) {
     if (gestureType.value === 'zoom' || Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
       const zoomFactor = 0.01;
       const delta = -event.deltaY * zoomFactor;
-      scale.value = Math.max(0.1, Math.min(10, scale.value + delta));
-      updateTransform();
+      zoomAtCursor(event, Math.max(0.1, Math.min(10, scale.value + delta)));
     }
   } else {
     if (config.settings.mouseWheelMode === 0) {
       if (event.ctrlKey) {
-        const zoomFactor = 0.1;
-        scale.value = event.deltaY < 0
-          ? Math.min(scale.value * (1 + zoomFactor), 10)
-          : Math.max(scale.value * (1 - zoomFactor), 0.1);
-        updateTransform();
+        applyZoomFromWheel(event);
       } else {
         const direction = event.deltaY < 0 ? 'prev' : 'next';
         emit('message-from-video-viewer', { message: direction });
       }
     } else {
-      const zoomFactor = 0.1;
-      scale.value = event.deltaY < 0
-        ? Math.min(scale.value * (1 + zoomFactor), 10)
-        : Math.max(scale.value * (1 - zoomFactor), 0.1);
-      updateTransform();
+      applyZoomFromWheel(event);
     }
   }
 }

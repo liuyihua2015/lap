@@ -38,13 +38,13 @@
             </label>
             <label class="min-w-0 space-y-1">
               <span class="block text-[10px] uppercase tracking-widest font-bold text-base-content/30">{{ $t('album.smart_edit.order') }}</span>
-              <select v-model.number="sortOrder" class="select select-sm text-xs w-full">
+              <select v-model.number="sortOrder" class="select select-sm text-xs w-full" :disabled="isRandomSort">
                 <option v-for="option in sortOrderOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
               </select>
             </label>
             <label class="min-w-0 space-y-1">
               <span class="block text-[10px] uppercase tracking-widest font-bold text-base-content/30">{{ $t('album.smart_edit.group') }}</span>
-              <select v-model.number="groupType" class="select select-sm text-xs w-full">
+              <select v-model.number="displayedGroupType" class="select select-sm text-xs w-full" :disabled="isRandomSort">
                 <option v-for="option in groupOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
               </select>
             </label>
@@ -179,6 +179,11 @@ const matchMode = ref(props.smartAlbum?.query?.match === 'any' ? 'any' : 'all');
 const sortType = ref(Number(props.smartAlbum?.sort?.type ?? config.search.sortType ?? 0));
 const sortOrder = ref(Number(props.smartAlbum?.sort?.order ?? config.search.sortOrder ?? 1));
 const groupType = ref(Number(props.smartAlbum?.group?.type ?? config.search.groupBy ?? 0));
+const isRandomSort = computed(() => sortType.value === 7);
+const displayedGroupType = computed({
+  get: () => isRandomSort.value ? GROUP.NONE : groupType.value,
+  set: (value: number) => { groupType.value = Number(value); },
+});
 
 const tagOptions = ref<any[]>([]);
 const personOptions = ref<any[]>([]);
@@ -203,7 +208,7 @@ const cullingOptions = computed(() => [
 ]);
 
 const mediaSubtypeOptions = computed(() => [
-  { value: 'live_photo', label: t('album.smart_edit.media_subtypes.live_photo') },
+  { value: 'motion_photo', label: t('album.smart_edit.media_subtypes.live_motion_photos') },
   { value: 'raw_jpeg_pair', label: t('album.smart_edit.media_subtypes.raw_jpeg_pair') },
 ]);
 
@@ -217,7 +222,7 @@ function indexedOptions(labels: unknown, fallbacks: string[]) {
 
 const sortOptions = computed(() => indexedOptions(
   localeMsg.value.toolbar.filter?.sort_type_options,
-  ['Taken Date', 'Created Date', 'Modified Date', 'Name', 'Size', 'Dimension', 'Duration'],
+  ['Taken Date', 'Created Date', 'Modified Date', 'Name', 'Size', 'Dimension', 'Duration', 'Random'],
 ));
 
 const sortOrderOptions = computed(() => indexedOptions(
@@ -333,7 +338,7 @@ function resetRuleValue(rule: any) {
 function setDefaultRuleValue(rule: any) {
   if (rule.field === 'name') rule.value = '';
   else if (rule.field === 'file_type') rule.value = 1;
-  else if (rule.field === 'media_subtype') rule.value = 'live_photo';
+  else if (rule.field === 'media_subtype') rule.value = 'motion_photo';
   else if (rule.field === 'extension') rule.value = extensionOptions.value[0]?.value || 'jpg';
   else if (rule.field === 'favorite' || rule.field === 'has_gps') rule.value = true;
   else if (rule.field === 'orientation') rule.value = 'landscape';
@@ -441,7 +446,9 @@ function clickOk() {
     group: { type: groupType.value },
     sort: { type: sortType.value, order: sortOrder.value },
     coverFileId: props.smartAlbum?.coverFileId || null,
-    count: props.smartAlbum?.count ?? null,
+    // Editing rules changes the result set, so its lazily populated count
+    // must be requested again rather than carried over from the old query.
+    count: null,
     createdAt: props.smartAlbum?.createdAt || now,
     updatedAt: now,
   });
@@ -463,6 +470,9 @@ function cloneValue(value: any) {
 function normalizeRuleValueForEdit(field: string, value: any) {
   if (field === 'file_type') {
     return getFileTypeValue(value);
+  }
+  if (field === 'media_subtype' && value === 'live_photo') {
+    return 'motion_photo';
   }
   if (field === 'extension') {
     return getExtensionValue(value);

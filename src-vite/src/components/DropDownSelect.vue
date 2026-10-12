@@ -44,8 +44,14 @@
 
           <!-- menu group 2 -->
           <button v-for="(option, index) in extendOptions"
-            class="p-1 flex flex-row hover:bg-base-100/30 hover:text-base-content hover:rounded-box cursor-pointer text-sm whitespace-nowrap "
+            :class="[
+              'p-1 flex flex-row text-sm whitespace-nowrap',
+              extendDisabled
+                ? 'text-base-content/30 cursor-default'
+                : 'hover:bg-base-100/30 hover:text-base-content hover:rounded-box cursor-pointer',
+            ]"
             :key="index"
+            :disabled="extendDisabled"
             @click="selectExtendOption(index)"
           >
             <IconDot v-if="extendIndex === index" class="w-5" /> 
@@ -84,6 +90,10 @@ const props = defineProps({
     default: 0,
   },
   disabled: {
+    type: Boolean,
+    default: false,
+  },
+  extendDisabled: {
     type: Boolean,
     default: false,
   },
@@ -234,6 +244,7 @@ const selectOption = (index) => {
 };
 
 const selectExtendOption = (index) => { 
+  if (props.extendDisabled) return;
   extendIndex.value = index;
   emit('select', optionIndex.value, extendIndex.value);
   isDropDown.value = false;

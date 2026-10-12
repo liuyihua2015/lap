@@ -80,7 +80,11 @@
     </div>
 
     <!-- Person List -->
-    <div v-if="allPersons.length > 0" class="grow overflow-x-hidden overflow-y-auto">
+    <div
+      v-if="allPersons.length > 0"
+      class="grow overflow-x-hidden overflow-y-auto"
+      @scroll="handlePersonListScroll"
+    >
       <ul>
         <li v-for="person in sortedPersons" :key="person.id" :id="'person-' + person.id">
           <div
@@ -116,41 +120,26 @@
               <span class="sidebar-item-label">
                 {{ getPersonDisplayName(person) }}
               </span>
-              <span v-if="person.count" :class="['sidebar-item-count', selectedPerson?.id === person.id ? 'hidden' : 'group-hover:hidden']">
-                {{ person.count.toLocaleString() }}
-              </span>
-
-              <div :class="[
-                  'ml-auto flex flex-row items-center text-base-content/30',
-                  selectedPerson?.id === person.id ? '' : 'hidden group-hover:flex'
-                ]"
-              >
-                <ContextMenu
-                  :ref="(el: any) => { if (el) personContextMenus[person.id] = el }"
-                  :iconMenu="IconMore"
-                  :menuItems="getMoreMenuItems()"
-                  :smallIcon="true"
-                />
+              <div class="ml-auto flex flex-row items-center text-base-content/30">
+                <span v-if="person.count" class="sidebar-item-count shrink-0">
+                  {{ person.count.toLocaleString() }}
+                </span>
+                <div :class="[
+                    selectedPerson?.id === person.id ? '' : 'hidden group-hover:flex'
+                  ]"
+                >
+                  <ContextMenu
+                    :ref="(el: any) => { if (el) personContextMenus[person.id] = el }"
+                    :iconMenu="IconMore"
+                    :menuItems="getMoreMenuItems()"
+                    :smallIcon="true"
+                  />
+                </div>
               </div>
             </template>
           </div>
         </li>
       </ul>
-      <button
-        v-if="hasMorePersons"
-        type="button"
-        class="w-full py-2 text-sm text-base-content/70 hover:text-base-content cursor-pointer disabled:cursor-wait"
-        :disabled="isLoadingMorePersons"
-        @click="loadMorePersons"
-      >
-        {{ isLoadingMorePersons
-          ? $t('tooltip.loading')
-          : $t('menu.person.show_more', {
-              loaded: allPersons.length.toLocaleString(),
-              total: totalPersons.toLocaleString(),
-            })
-        }}
-      </button>
     </div>
 
     <div v-else-if="isLoadingPersons" class="mt-2 px-2 flex flex-col items-center justify-center text-base-content/30">
@@ -273,6 +262,7 @@ import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { config, libConfig } from '@/common/config';
 import { getPersonsPage, renamePerson, deletePerson, mergePersons, indexFaces, cancelFaceIndex, isFaceIndexing, listenFaceIndexProgress, listenFaceIndexFinished, listenClusterProgress, resetFaces, getFaceStats } from '@/common/api';
+import { SIDEBAR } from '@/common/constants';
 import { 
   IconPerson, 
   IconMore, 
@@ -324,13 +314,13 @@ const personContextMenus = ref<Record<number, any>>({});
 const isLoadingPersons = ref(true);
 const isLoadingMorePersons = ref(false);
 const hasMorePersons = ref(false);
-const totalPersons = ref(0);
 const allPersonCount = ref(0);
 const personSearch = ref('');
 const isPersonSearchFocused = ref(false);
 const PERSON_PAGE_SIZE = 100;
 let personLoadRequest = 0;
 let personSearchTimer: ReturnType<typeof setTimeout> | null = null;
+let isPersonMounted = true;
 
 function handlePersonContextMenu(person: any, event: MouseEvent) {
   selectPerson(person);
@@ -496,7 +486,6 @@ watch(personSearch, () => {
   personLoadRequest++;
   allPersons.value = [];
   hasMorePersons.value = false;
-  totalPersons.value = 0;
   isLoadingPersons.value = true;
   isLoadingMorePersons.value = false;
   personSearchTimer = setTimeout(() => {
@@ -506,43 +495,57 @@ watch(personSearch, () => {
 });
 
 onUnmounted(() => {
+  isPersonMounted = false;
+  personLoadRequest++;
   if (personSearchTimer) clearTimeout(personSearchTimer);
   if (unlistenProgress) unlistenProgress();
   if (unlistenFinished) unlistenFinished();
   if (unlistenCluster) unlistenCluster();
 });
 
-async function loadPersons(reset = true) {
+async function loadPersons(reset = true, validateSelectedPerson = false) {
   if (!reset && (!hasMorePersons.value || isLoadingMorePersons.value || isLoadingPersons.value)) return;
 
   const requestId = reset ? ++personLoadRequest : personLoadRequest;
+  const libraryId = libConfig._libraryId;
   const search = personSearch.value.trim();
   if (reset) {
     isLoadingPersons.value = true;
     allPersons.value = [];
     hasMorePersons.value = false;
-    totalPersons.value = 0;
   } else {
     isLoadingMorePersons.value = true;
   }
 
   try {
-    const page = await getPersonsPage(
-      config.settings.categorySort,
-      reset ? 0 : allPersons.value.length,
-      PERSON_PAGE_SIZE,
+    const page = await getPersonsPage({
+      sort: config.settings.categorySort,
+      offset: reset ? 0 : allPersons.value.length,
+      limit: PERSON_PAGE_SIZE,
       search,
-    );
-    if (requestId !== personLoadRequest) return;
+      smallFileFilter: config.settings.smallFileFilter,
+      refreshSummary: validateSelectedPerson
+        ? { selectedPersonId: libConfig.person?.id ?? null }
+        : null,
+    });
+    if (!isPersonMounted || requestId !== personLoadRequest || libraryId !== libConfig._libraryId) return;
 
     if (page) {
+      const selectedPersonWasFiltered = validateSelectedPerson && page.selected_person_visible === false;
+      if (selectedPersonWasFiltered) {
+        selectedPerson.value = null;
+        if (libConfig.person) {
+          libConfig.person.id = null;
+          libConfig.person.name = null;
+        }
+      }
       allPersons.value = reset
         ? page.persons
         : [...allPersons.value, ...page.persons];
       hasMorePersons.value = page.has_more;
-      totalPersons.value = page.total;
-      if (!search) allPersonCount.value = page.total;
-      if (allPersons.value.length > 0 && !selectedPerson.value) {
+      if (page.visible_total != null) allPersonCount.value = page.visible_total;
+      else if (!search) allPersonCount.value = page.total;
+      if (allPersons.value.length > 0 && !selectedPerson.value && !selectedPersonWasFiltered) {
         const index = allPersons.value.findIndex(p => p.id === libConfig.person?.id);
         selectPerson(allPersons.value[index >= 0 ? index : 0]);
       }
@@ -557,7 +560,9 @@ async function loadPersons(reset = true) {
   }
 }
 
-function loadMorePersons() {
+function handlePersonListScroll(event: Event) {
+  const target = event.currentTarget as HTMLElement;
+  if (target.scrollTop + target.clientHeight < target.scrollHeight - 24) return;
   void loadPersons(false);
 }
 
@@ -605,7 +610,6 @@ async function clickDeletePerson() {
     if (result) {
       const index = allPersons.value.findIndex(p => p.id === selectedPerson.value.id);
       allPersons.value = allPersons.value.filter(p => p.id !== selectedPerson.value.id);
-      totalPersons.value = Math.max(0, totalPersons.value - 1);
       allPersonCount.value = Math.max(0, allPersonCount.value - 1);
       if (index > 0) {
         selectPerson(allPersons.value[index - 1]);
@@ -690,6 +694,21 @@ async function checkFaceStats() {
     incompleteCount.value = stats.unprocessed;
   }
 }
+
+// Only refresh the active view. Inactive panel data is refreshed on re-entry.
+watch(() => config.settings.smallFileFilter, () => {
+  if (libConfig.activePane === 'main' && config.main.sidebarIndex === SIDEBAR.PERSON) {
+    void loadPersons(true, true);
+    void checkFaceStats();
+  }
+});
+
+watch(() => [config.main.sidebarIndex, libConfig.activePane], () => {
+  if (libConfig.activePane === 'main' && config.main.sidebarIndex === SIDEBAR.PERSON) {
+    void loadPersons(true, true);
+    void checkFaceStats();
+  }
+});
 
 async function showBetaTooltip() {
   if (!config.settings.showToolTip || !betaBadgeRef.value) return;

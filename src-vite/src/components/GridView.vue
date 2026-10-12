@@ -72,6 +72,7 @@
       <div
         v-else
         class="w-full h-full flex items-center justify-center overflow-hidden"
+        :class="{ 'opacity-50': draggedFileIds.has(Number(getFileItem(item)?.id)) }"
         @pointerdown="onItemPointerDown($event, getFileIndex(item, index), getFileItem(item))"
       >
         <Thumbnail
@@ -84,6 +85,7 @@
           :select-mode="selectMode"
           :query-source="querySource"
           :dedup-status="dedupStatuses[Number(getFileItem(item).id)]"
+          :grid-size="gridSize"
           @clicked="(modifiers) => $emit('item-clicked', getFileIndex(item, index), modifiers)"
           @dblclicked="(modifiers) => $emit('item-dblclicked', getFileIndex(item, index), modifiers)"
           @select-toggled="(shiftKey) => $emit('item-select-toggled', getFileIndex(item, index), shiftKey)"
@@ -103,7 +105,7 @@
           </div>
         </Transition>
         <div v-if="contentReady" class="flex flex-col items-center gap-2">
-          <img src="@/assets/images/lazycat-300.png" class="w-32 object-contain opacity-30" alt="" />
+          <IconSearch class="w-8 h-8" />
           <span class="text-sm">{{ emptyMessage }}</span>
           <span class="text-xs">{{ emptyHint }}</span>
         </div>
@@ -120,6 +122,7 @@ import { watch, ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n';
 import { useUIStore } from '@/stores/uiStore';
 import { config } from '@/common/config';
+import { thumbnailProfile } from '@/common/thumbnailProfiles';
 import Thumbnail from '@/components/Thumbnail.vue';
 import VirtualScroll from '@/components/VirtualScroll.vue';
 import { GROUP } from '@/common/constants';
@@ -139,6 +142,7 @@ import {
   IconFolder,
   IconLocation,
   IconPhoto,
+  IconSearch,
   IconStarFilled,
   IconVideo,
 } from '@/common/icons';
@@ -159,6 +163,8 @@ const props = withDefaults(defineProps<{
   folderGroupRoots?: Array<{ path: string; name?: string }>;
   querySource?: string;
   dedupStatuses?: Record<number, 'keep' | 'dup'>;
+  draggedFileIds?: Set<number>;
+  gridSize: number;
 }>(), {
   selectedItemIndex: -1,
   timelineData: () => [],
@@ -174,6 +180,8 @@ const props = withDefaults(defineProps<{
   folderGroupRoots: () => [],
   querySource: '',
   dedupStatuses: () => ({}),
+  draggedFileIds: () => new Set<number>(),
+  gridSize: 120,
 });
 
 const emit = defineEmits([
@@ -188,6 +196,7 @@ const emit = defineEmits([
   'visible-range-update',
   'scroll',
   'layout-update',
+  'grid-size-change',
   'item-drag-start',
   'item-drag',
   'item-drag-end',
@@ -318,7 +327,8 @@ const groupedLayoutGeometryResult = computed(() => {
     return { boxes: [], contentSize: 0 };
   }
 
-  const { style, size } = config.settings.grid;
+  const { style } = config.settings.grid;
+  const size = props.gridSize;
   const boxes: Geometry[] = new Array(renderItems.value.length);
 
   if (!isGeometryGridStyle(style)) {
@@ -393,7 +403,8 @@ const layoutGeometryResult = computed(() => {
     return { boxes: [], contentSize: 0 };
   }
 
-  const { style, size, showFilmStrip } = config.settings.grid;
+  const { style, showFilmStrip } = config.settings.grid;
+  const size = props.gridSize;
 
   if (hasGroupRows.value) {
     return groupedLayoutGeometryResult.value;
@@ -446,7 +457,8 @@ const isVerticalFilmstrip = computed(() => config.settings.grid.showFilmStrip &&
 
 // item width and height(including gap)
 const itemWidth = computed(() => {
-  const { style, size } = config.settings.grid;
+  const { style } = config.settings.grid;
+  const size = props.gridSize;
   if (isVerticalFilmstrip.value && containerWidth.value > 0) {
     return containerWidth.value;
   }
@@ -455,7 +467,8 @@ const itemWidth = computed(() => {
 });
 
 const itemHeight = computed(() => {
-  const { style, size } = config.settings.grid;
+  const { style } = config.settings.grid;
+  const size = props.gridSize;
   
   if (style === 0) {
     let labelHeight = 0;
@@ -497,7 +510,7 @@ function updateLayout() {
   emit('layout-update', { height: layoutContentHeight.value });
 }
 
-watch(() => [config.settings.grid.size, config.settings.grid.style, config.settings.grid.showFilmStrip], async () => {
+watch(() => [props.gridSize, config.settings.grid.style, config.settings.grid.showFilmStrip], async () => {
   if (isInitialLayout) {
     isInitialLayout = false;
     updateColumnCount();
@@ -610,16 +623,16 @@ onBeforeUnmount(() => {
 
 function onGestureStart(e: any) {
   e.preventDefault();
-  startGridSize.value = config.settings.grid.size;
+  startGridSize.value = props.gridSize;
 }
 
 function onGestureChange(e: any) {
   e.preventDefault();
   if (startGridSize.value > 0) {
     let newSize = Math.round(startGridSize.value * e.scale);
-    // Clamp between 120 and 360
-    newSize = Math.max(120, Math.min(360, newSize));
-    config.settings.grid.size = newSize;
+    const profile = thumbnailProfile(config.settings.thumbnailSize);
+    newSize = Math.max(profile.minGridSize, Math.min(profile.maxGridSize, newSize));
+    emit('grid-size-change', newSize);
   }
 }
 
@@ -781,12 +794,18 @@ function centerItem(index: number) {
   if (index >= 0) scrollToItem(index, true);
 }
 
-function getNextItemIndex(currentIndex: number, direction: 'up' | 'down'): number {
+function getNextItemIndex(currentIndex: number, direction: 'up' | 'down', page = false): number {
+  const pageHeight = Math.max(1, (scroller.value?.$el.clientHeight ?? 0)
+    - 48 * Number(config.settings.scale || 1) - (config.settings.showStatusBar ? 32 : 4));
   const style = config.settings.grid.style;
   const supportsGeometryNavigation = hasGroupRows.value
     || style === 2
     || (!config.settings.grid.showFilmStrip && isGeometryGridStyle(style));
   if (!supportsGeometryNavigation || layoutGeometry.value.length === 0) {
+    if (page && !hasGroupRows.value) {
+      const step = Math.max(1, Math.floor(pageHeight / itemHeight.value)) * columnCount.value;
+      return Math.max(0, Math.min(props.fileList.length - 1, currentIndex + (direction === 'down' ? step : -step)));
+    }
     return -1;
   }
 
@@ -821,11 +840,12 @@ function getNextItemIndex(currentIndex: number, direction: 'up' | 'down'): numbe
 
   if (candidates.length === 0) return currentIndex;
 
-  // Find the closest row (smallest diffY)
-  const minDiffY = Math.min(...candidates.map(c => c.diffY));
+  // Arrow keys move one row; page keys target one viewport away.
+  const targetDistance = page ? pageHeight : 0;
+  const minDiffY = Math.min(...candidates.map(c => Math.abs(c.diffY - targetDistance)));
   
   // Filter candidates to only those in the closest row
-  const rowCandidates = candidates.filter(c => Math.abs(c.diffY - minDiffY) < 5); // 5px tolerance
+  const rowCandidates = candidates.filter(c => Math.abs(Math.abs(c.diffY - targetDistance) - minDiffY) < 5); // 5px tolerance
 
   // Find item with closest centerX
   let closestIndex = -1;
@@ -963,6 +983,7 @@ function getFolderGroupLabel(item: any) {
 
 defineExpose({
   getColumnCount,
+  scrollToItem,
   scrollToPosition,
   scrollToRowIndex,
   getScrollTop,

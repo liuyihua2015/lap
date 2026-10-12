@@ -143,6 +143,11 @@ fn get_migrations() -> Vec<Migration> {
             description: "Persist visual similarity keep state",
             sql: "",
         },
+        Migration {
+            version: 16,
+            description: "Add motion photo offset",
+            sql: "",
+        },
     ]
 }
 
@@ -450,6 +455,13 @@ pub fn check_and_migrate(conn: &Connection) -> Result<(), String> {
                          );",
                     )
                     .map_err(|e| format!("Migration 15 failed initializing keep state: {}", e))?;
+                }
+            } else if migration.version == 16 {
+                if !table_has_column(conn, "afiles", "motion_photo_offset")? {
+                    conn.execute("ALTER TABLE afiles ADD COLUMN motion_photo_offset INTEGER", [])
+                        .map_err(|e| {
+                            format!("Migration 16 failed adding motion_photo_offset: {}", e)
+                        })?;
                 }
             } else if !migration.sql.trim().is_empty() {
                 conn.execute_batch(migration.sql)

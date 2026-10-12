@@ -161,7 +161,7 @@
             :icon="IconRotate"
             :disabled="fileIndex < 0 || isSlideShow || !canInteract"
             :iconStyle="{ transform: `rotate(${file?.rotate ?? 0}deg)`, transition: 'transform 0.3s' }"
-            :selected="file?.rotate % 360 > 0 && !isSlideShow"
+            :selected="(file?.rotate ?? 0) % 360 !== 0 && !isSlideShow"
             :tooltip="$t('menu.meta.rotate')"
             :shortcut="shortcut('meta.rotate')"
             @click="$emit('item-action', { action: 'rotate', index: fileIndex })"
@@ -229,7 +229,6 @@
       />
       <IconClose 
         class="p-3 w-12 h-10 text-base-content/70 hover:text-base-content hover:bg-red-500 transition-colors duration-300 cursor-pointer" 
-        @mousedown.stop="$emit('close')"
         @click.stop="$emit('close')" 
       />
     </div>
@@ -283,14 +282,18 @@
             :style="badge.iconStyle"
           />
           <span v-if="badge.label" class="leading-none">{{ badge.label }}</span>
+          <component
+            v-if="badge.trailingIcon"
+            :is="badge.trailingIcon"
+            :class="['h-3.5 w-3.5 shrink-0', badge.trailingIconClass]"
+          />
         </div>
       </div>
 
       <!-- Previous Button (Overlay, media-area anchored) -->
       <button
         v-if="!isSlideShow && showOverlayNav"
-        class="absolute left-2 -translate-y-1/2 z-70 p-2 rounded-full bg-base-100/30 backdrop-blur-md transition-opacity duration-200"
-        :style="{ top: navButtonsTop }"
+        class="absolute left-2 top-1/2 -translate-y-1/2 z-70 p-2 rounded-full bg-base-100/30 backdrop-blur-md transition-opacity duration-200"
         :class="[
           isHoverLeft ? (hasPrevious ? 'opacity-100 pointer-events-auto hover:text-base-content hover:bg-base-100/80 cursor-pointer' : 'opacity-30 cursor-default') : 'opacity-0 pointer-events-none'
         ]"
@@ -304,8 +307,7 @@
       <!-- Next Button (Overlay, media-area anchored) -->
       <button
         v-if="!isSlideShow && showOverlayNav"
-        class="absolute right-2 -translate-y-1/2 z-70 p-2 rounded-full bg-base-100/30 backdrop-blur-md transition-opacity duration-200"
-        :style="{ top: navButtonsTop }"
+        class="absolute right-2 top-1/2 -translate-y-1/2 z-70 p-2 rounded-full bg-base-100/30 backdrop-blur-md transition-opacity duration-200"
         :class="[
           isHoverRight ? (hasNext ? 'opacity-100 pointer-events-auto hover:text-base-content hover:bg-base-100/80 cursor-pointer' : 'opacity-30 cursor-default') : 'opacity-0 pointer-events-none'
         ]"
@@ -317,7 +319,7 @@
       </button>
 
       <div
-        v-if="isLivePhoto"
+        v-if="isLivePhotoLike"
         :class="[
           'absolute inset-0 z-10 transition-opacity duration-150',
           isLivePhotoPlaying ? 'opacity-100' : 'pointer-events-none opacity-0',
@@ -325,7 +327,7 @@
       >
         <Video
           class="h-full w-full"
-          :filePath="file?.live_photo_video_path"
+          :filePath="livePhotoVideoPath"
           :rotate="file?.rotate ?? 0"
           :isZoomFit="isZoomFit"
           :isSlideShow="isSlideShow"
@@ -346,10 +348,10 @@
       <div
         v-if="file?.file_type === 1 || file?.file_type === 3"
         :class="[
-          isLivePhoto
+          isLivePhotoLike
             ? 'absolute inset-0 z-20 transition-opacity duration-150'
             : 'contents',
-          isLivePhoto && (isLivePhotoPlaying ? 'pointer-events-none opacity-0' : 'opacity-100'),
+          isLivePhotoLike && (isLivePhotoPlaying ? 'pointer-events-none opacity-0' : 'opacity-100'),
         ]"
       >
         <Image
@@ -380,7 +382,7 @@
       </div>
 
       <button
-        v-if="isLivePhoto"
+        v-if="isLivePhotoLike"
         class="absolute left-4 bottom-4 z-60 inline-flex h-10 items-center gap-2 rounded-box bg-base-100/70 px-3 text-sm font-medium text-base-content/70 shadow hover:bg-base-100 hover:text-base-content cursor-pointer"
         @mouseenter="startLivePhotoPreview"
         @mouseleave="isLivePhotoPlaying = false"
@@ -388,7 +390,7 @@
         @dblclick.stop
       >
         <IconLivePhoto class="h-4 w-4" />
-        <span>LIVE</span>
+        <span class="text-xs font-semibold uppercase tracking-wider leading-none">{{ isLivePhoto ? t('image_viewer.live') : t('image_viewer.motion') }}</span>
       </button>
 
       <div
@@ -436,6 +438,7 @@ import { config, libConfig } from '@/common/config';
 import { useToast } from '@/common/toast';
 import { isWin, isMac, isLinux, getSlideShowInterval } from '@/common/utils';
 import { getShortcutLabel, ShortcutActionId, ShortcutPlatform, VIEW_BACKGROUND_SHORTCUTS } from '@/common/shortcuts';
+import { getMotionPhotoVideoPath } from '@/common/api';
 
 import Image from '@/components/Image.vue';
 import TButton from '@/components/TButton.vue';
@@ -591,9 +594,19 @@ const props = defineProps({
 
 const isLivePhotoPlaying = ref(false);
 const isLivePhoto = computed(() => props.file?.media_subtype === 'live_photo' && !!props.file?.live_photo_video_path);
+const isMotionPhoto = computed(() => props.file?.media_subtype === 'motion_photo');
+// Both Apple Live Photos and Android Motion Photos play a short video layered
+// over the still image, so they share the same UI/playback path.
+const isLivePhotoLike = computed(() => isLivePhoto.value || isMotionPhoto.value);
+const motionPhotoVideoPath = ref<string | null>(null);
+const livePhotoVideoPath = computed(() =>
+  isLivePhoto.value ? props.file?.live_photo_video_path : motionPhotoVideoPath.value,
+);
 const livePhotoViewport = ref<Record<string, number | boolean> | null>(null);
+let motionPhotoVideoRequestSeq = 0;
 
 function startLivePhotoPreview() {
+  if (!livePhotoVideoPath.value) return;
   emit('activate');
   const viewport = mediaRef.value?.getViewportState?.();
   // Preserve the still image's visible region for the Live Photo preview.
@@ -606,11 +619,28 @@ function startLivePhotoPreview() {
 }
 
 watch(
-  () => [props.file?.id, props.file?.live_photo_video_path],
-  () => {
+  () => [props.file?.id, props.file?.media_subtype, props.file?.modified_at],
+  async ([fileId, mediaSubtype]) => {
+    const requestSeq = ++motionPhotoVideoRequestSeq;
     isLivePhotoPlaying.value = false;
     livePhotoViewport.value = null;
+    motionPhotoVideoPath.value = null;
+    // For Motion Photos the embedded MP4 has to be extracted (cached) before
+    // the generic video pipeline can play it.
+    if (mediaSubtype === 'motion_photo' && fileId != null) {
+      try {
+        const path = await getMotionPhotoVideoPath(fileId);
+        if (requestSeq === motionPhotoVideoRequestSeq) {
+          motionPhotoVideoPath.value = path;
+        }
+      } catch (error) {
+        if (requestSeq === motionPhotoVideoRequestSeq) {
+          console.error('Failed to prepare motion photo video:', error);
+        }
+      }
+    }
   },
+  { immediate: true },
 );
 
 const emit = defineEmits([
@@ -645,7 +675,6 @@ const isHoverTop = ref(false);
 const isHoverBottom = ref(false);
 const toolbarPosition = ref<'top' | 'bottom'>('top');
 const hasOpenMenu = ref(false);
-const navButtonsTop = ref('50%');
 
 // Responsive toolbar
 const containerWidth = ref(0);
@@ -811,6 +840,8 @@ type StatusBadge = {
   label?: string;
   iconClass?: string;
   iconStyle?: CSSProperties;
+  trailingIcon?: Component;
+  trailingIconClass?: string;
 };
 
 const normalizedFileRotate = computed(() => {
@@ -820,23 +851,19 @@ const normalizedFileRotate = computed(() => {
 
 const quickViewStatusBadges = computed<StatusBadge[]>(() => {
   const badges: StatusBadge[] = [];
+  const metaIcons: StatusBadge['icons'] = [];
   const rating = Number(props.file?.rating || 0);
   const cullingFlag = Number(props.file?.culling_flag ?? props.file?.cullingFlag ?? 0);
-  const metaIcons: StatusBadge['icons'] = [];
-
-  if (cullingFlag === 1) {
-    badges.push({
-      key: 'culling-pick',
-      icon: IconFlagFilled,
-      iconClass: 'text-primary',
-    });
-  } else if (cullingFlag === 2) {
-    badges.push({
-      key: 'culling-reject',
-      icon: IconFlagOff,
-      iconClass: 'text-error',
-    });
-  }
+  const cullingIcon = cullingFlag === 1
+    ? IconFlagFilled
+    : cullingFlag === 2
+      ? IconFlagOff
+      : undefined;
+  const cullingIconClass = cullingFlag === 1
+    ? 'text-primary'
+    : cullingFlag === 2
+      ? 'text-error'
+      : undefined;
 
   if (props.file?.is_favorite) {
     badges.push({
@@ -844,6 +871,8 @@ const quickViewStatusBadges = computed<StatusBadge[]>(() => {
       icon: IconHeartFilled,
       iconClass: 'text-error',
       label: rating > 0 ? `${rating}` : undefined,
+      trailingIcon: cullingIcon,
+      trailingIconClass: cullingIconClass,
     });
   } else if (rating > 0) {
     badges.push({
@@ -851,33 +880,29 @@ const quickViewStatusBadges = computed<StatusBadge[]>(() => {
       icon: IconStarFilled,
       iconClass: 'text-warning',
       label: `${rating}`,
+      trailingIcon: cullingIcon,
+      trailingIconClass: cullingIconClass,
+    });
+  } else if (cullingIcon) {
+    badges.push({
+      key: cullingFlag === 1 ? 'culling-pick' : 'culling-reject',
+      icon: cullingIcon,
+      iconClass: cullingIconClass,
     });
   }
-
-  if (props.file?.has_tags) {
-    metaIcons.push({ icon: IconTag });
-  }
-
-  if (props.file?.comments?.length > 0) {
-    metaIcons.push({ icon: IconComment });
-  }
-
+  if (props.file?.has_tags) metaIcons.push({ icon: IconTag });
+  if (props.file?.has_collections) metaIcons.push({ icon: IconBookmark });
+  if (props.file?.comments?.length > 0) metaIcons.push({ icon: IconComment });
   if (normalizedFileRotate.value > 0) {
     metaIcons.push({
       icon: IconRotate,
-      style: {
-        transform: `rotate(${normalizedFileRotate.value}deg)`,
-      },
+      style: { transform: `rotate(${normalizedFileRotate.value}deg)` },
     });
   }
-
   if (metaIcons.length > 0) {
-    const visibleIcons = metaIcons.slice(0, 3);
-    const extraCount = metaIcons.length - visibleIcons.length;
     badges.push({
       key: 'meta',
-      icons: visibleIcons,
-      label: extraCount > 0 ? `+${extraCount}` : undefined,
+      icons: metaIcons,
     });
   }
 
@@ -885,27 +910,13 @@ const quickViewStatusBadges = computed<StatusBadge[]>(() => {
 });
 
 const showStatusBadges = computed(() => {
-  return props.mode === 0 || props.mode === 1 || props.mode === 2;
+  return props.mode === 0 || props.mode === 2;
 });
 
 const showWindowControlsBar = computed(() => {
   return props.showToolbar && !(showDesktopWindowControls && props.mode === 2 && props.isFullScreen);
 });
 let resizeObserver: ResizeObserver | null = null;
-const updateNavButtonsTop = () => {
-  if (!containerRef.value || !mediaAreaRef.value) {
-    navButtonsTop.value = '50%';
-    return;
-  }
-  const containerRect = containerRef.value.getBoundingClientRect();
-  const mediaRect = mediaAreaRef.value.getBoundingClientRect();
-  if (containerRect.height <= 0 || mediaRect.height <= 0) {
-    navButtonsTop.value = '50%';
-    return;
-  }
-  const centerY = mediaRect.top - containerRect.top + mediaRect.height / 2;
-  navButtonsTop.value = `${Math.round(centerY)}px`;
-};
 
 onMounted(() => {
   resizeObserver = new ResizeObserver((entries) => {
@@ -916,24 +927,17 @@ onMounted(() => {
         buttonsWidth.value = entry.contentRect.width;
       }
     }
-    updateNavButtonsTop();
   });
 
   if (containerRef.value) {
     resizeObserver.observe(containerRef.value);
   }
-  if (mediaAreaRef.value) {
-    resizeObserver.observe(mediaAreaRef.value);
-  }
   if (buttonsRef.value) {
     resizeObserver.observe(buttonsRef.value);
   }
-  updateNavButtonsTop();
-  window.addEventListener('resize', updateNavButtonsTop);
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', updateNavButtonsTop);
   if (resizeObserver) {
     resizeObserver.disconnect();
   }
@@ -1047,7 +1051,7 @@ const handleMenuOpenChange = (isOpen: boolean) => {
 const zoomIn = () => mediaRef.value?.zoomIn();
 const zoomOut = () => mediaRef.value?.zoomOut();
 const zoomActual = () => mediaRef.value?.zoomActual();
-const rotateRight = () => mediaRef.value?.rotateRight();
+const rotateView = (delta = 90) => mediaRef.value?.rotateView(delta);
 const togglePlay = () => mediaRef.value?.togglePlay?.();
 const getViewportState = () => mediaRef.value?.getViewportState?.();
 const applyViewportState = (viewport: any, silent = false) => mediaRef.value?.applyViewportState?.(viewport, silent);
@@ -1178,7 +1182,7 @@ defineExpose({
   zoomIn,
   zoomOut,
   zoomActual,
-  rotateRight,
+  rotateView,
   togglePlay,
   getViewportState,
   applyViewportState,

@@ -42,6 +42,7 @@ const MULTILINGUAL_CHECKSUMS_URL: &str =
     "https://github.com/julyx10/lap-binaries/releases/download/models/sha256sums.txt";
 const MULTILINGUAL_RELEASE_API_URL: &str =
     "https://api.github.com/repos/julyx10/lap-binaries/releases/tags/models";
+const MULTILINGUAL_MODEL_CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 static MULTILINGUAL_MODEL_DOWNLOAD_ID: AtomicU64 = AtomicU64::new(0);
 static MULTILINGUAL_MODEL_INSTALLING: AtomicBool = AtomicBool::new(false);
 
@@ -651,7 +652,7 @@ pub async fn download_multilingual_text_model(app: AppHandle) -> Result<(), Stri
         ),
     ];
     let client = reqwest::Client::builder()
-        .connect_timeout(Duration::from_secs(3))
+        .connect_timeout(MULTILINGUAL_MODEL_CONNECT_TIMEOUT)
         .build()
         .map_err(|e| format!("Failed to create download client: {}", e))?;
     let expected_total = get_download_total_size(&client, &files).await;

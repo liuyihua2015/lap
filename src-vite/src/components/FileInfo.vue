@@ -84,7 +84,7 @@
                   @click.stop="increasePreviewScale"
                 />
               </div>
-              <div class="absolute inset-0">
+              <div class="absolute inset-0 cursor-pointer" @click.stop="$emit('openViewer')">
                 <img
                   v-if="fileInfo?.thumbnail"
                   :src="fileInfo.thumbnail"
@@ -156,7 +156,7 @@
           @leave="onLeave"
         >
           <div v-if="showBasicInfoPanel" class="overflow-hidden">
-            <div class="pl-4 grid grid-cols-[84px_1fr] gap-y-1.5 gap-x-4 text-xs">
+            <div class="pl-4 grid grid-cols-[84px_minmax(0,1fr)] gap-y-1.5 gap-x-4 text-xs">
             <!-- Name -->
             <div class="flex items-center text-[11px] text-base-content/45 h-6">{{ $t('file_info.name') }}</div>
             <div class="group/field flex items-center gap-1">
@@ -196,7 +196,11 @@
 
             <!-- Album -->
             <div class="flex items-center text-[11px] text-base-content/45 h-6">{{ $t('file_info.album_name') }}</div>
-            <div class="flex items-center min-w-0">
+            <div class="flex items-center min-w-0 gap-1.5">
+              <span class="w-5 h-5 rounded-full overflow-hidden bg-base-300/70 ring-1 ring-base-content/5 shrink-0 flex items-center justify-center">
+                <img v-if="albumCoverUrl" :src="albumCoverUrl" class="w-full h-full object-cover" />
+                <IconFolder v-else class="w-3.5 h-3.5 text-base-content/30" />
+              </span>
               <span class="min-w-0 text-[12px] font-medium text-base-content/80 break-all">{{ generalFileInfo?.album_name }}</span>
             </div>
 
@@ -249,55 +253,43 @@
             />
 
             <!-- Tags -->
-            <div class="flex items-center text-[11px] text-base-content/45 min-h-6 py-1.5">{{ $t('file_info.tags') }}</div>
-            <div class="group/field flex items-center min-h-6 gap-1">
-              <TButton
-                v-if="!fileInfo?.tags?.length"
-                :icon="IconEdit"
-                :tooltip="$t('settings.shortcuts.actions.edit_tags')"
-                :buttonSize="'small'"
-                class="shrink-0"
-                @click.stop="emit('quickEditTag')"
-              />
-              <div class="text-[12px] text-base-content/75 flex flex-wrap gap-1 flex-1 min-w-0 cursor-pointer" @click.stop="fileInfo?.tags?.length && emit('quickEditTag')">
-                <template v-if="fileInfo?.tags && fileInfo.tags.length">
+            <template v-if="fileInfo?.tags?.length">
+              <div class="flex items-center text-[11px] text-base-content/45 min-h-6 py-1.5">{{ $t('file_info.tags') }}</div>
+              <div class="group/field flex items-center min-h-6 gap-1">
+                <div class="text-[12px] text-base-content/75 flex flex-wrap gap-1 flex-1 min-w-0 cursor-pointer" @click.stop="emit('quickEditTag')">
                   <span
                     v-for="tag in fileInfo.tags"
                     :key="tag.id"
                     class="badge badge-sm badge-outline border-base-content/20 bg-base-content/5 font-medium text-base-content/75"
                   >{{ tag.name }}</span>
-                </template>
+                </div>
               </div>
-            </div>
-
-            <!-- Comment -->
-            <div class="flex items-start text-[11px] text-base-content/45 py-1.5">{{ $t('file_info.comment') }}</div>
-            <div class="group/field flex items-start gap-1">
-              <TButton
-                v-if="!fileInfo?.comments"
-                :icon="IconEdit"
-                :tooltip="$t('settings.shortcuts.actions.edit_comment')"
-                :buttonSize="'small'"
-                class="shrink-0"
-                @click.stop="emit('quickEditComment')"
-              />
-              <div class="text-[12px] leading-5 text-base-content/75 wrap-break-words whitespace-pre-wrap flex-1 min-w-0 cursor-pointer" @click.stop="fileInfo?.comments && emit('quickEditComment')">{{ fileInfo?.comments }}</div>
-            </div>
+            </template>
 
             <!-- Collections -->
-            <template v-if="fileCollections.length > 0">
+            <template v-if="fileCollections.length">
               <div class="flex items-center text-[11px] text-base-content/45 min-h-6 py-1.5">{{ $t('collection.title') }}</div>
-              <div class="flex items-center min-h-6 gap-x-3 gap-y-1 flex-wrap">
-                <button
-                  v-for="collection in fileCollections"
-                  :key="collection.id"
-                  type="button"
-                  class="inline-flex items-center gap-1 text-[12px] font-medium text-base-content/70 transition-colors hover:text-base-content cursor-pointer"
-                  @click.stop="emit('navigateCollection', collection.id)"
-                >
-                  <IconBookmark class="h-3.5 w-3.5 shrink-0" />
-                  {{ collection.name }}
-                </button>
+              <div class="group/field flex items-center min-h-6 gap-1">
+                <div class="flex items-center min-h-6 gap-x-3 gap-y-1 flex-wrap flex-1 min-w-0">
+                  <button
+                    v-for="collection in fileCollections"
+                    :key="collection.id"
+                    type="button"
+                    class="inline-flex items-center gap-1 text-[12px] font-medium text-base-content/70 transition-colors hover:text-base-content cursor-pointer"
+                    @click.stop="emit('quickEditCollection')"
+                  >
+                    <IconBookmark class="h-3.5 w-3.5 shrink-0" />
+                    {{ collection.name }}
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <!-- Comment -->
+            <template v-if="fileInfo?.comments">
+              <div class="flex items-start text-[11px] text-base-content/45 py-1.5">{{ $t('file_info.comment') }}</div>
+              <div class="group/field flex items-start gap-1">
+                <div class="text-[12px] leading-5 text-base-content/75 wrap-break-words whitespace-pre-wrap flex-1 min-w-0 cursor-pointer" @click.stop="emit('quickEditComment')">{{ fileInfo?.comments }}</div>
               </div>
             </template>
 
@@ -312,6 +304,30 @@
                   :buttonSize="'small'"
                   @click.stop="emit('rotate')"
                 />
+              </div>
+            </template>
+
+            <!-- People -->
+            <template v-if="config.settings.face.enabled && filePersons.length">
+              <div class="flex items-center text-[11px] text-base-content/45 min-h-6 py-1.5">{{ $t('sidebar.people') }}</div>
+              <div class="flex items-center min-h-6 gap-x-3 gap-y-1 flex-wrap">
+                <button
+                  v-for="person in filePersons"
+                  :key="person.id"
+                  type="button"
+                  class="inline-flex items-center gap-1.5 text-[12px] font-medium text-base-content/70 transition-colors hover:text-primary cursor-pointer"
+                  @click.stop="navigatePerson(person)"
+                >
+                  <span class="w-5 h-5 rounded-full overflow-hidden bg-base-300/70 ring-1 ring-base-content/5 shrink-0 flex items-center justify-center">
+                    <img
+                      v-if="person.thumbnail"
+                      :src="'data:image/jpeg;base64,' + person.thumbnail"
+                      class="w-full h-full object-cover"
+                    />
+                    <IconPerson v-else class="w-3.5 h-3.5 text-base-content/30" />
+                  </span>
+                  {{ person.name || person.id }}
+                </button>
               </div>
             </template>
             </template>
@@ -342,11 +358,17 @@
           <div v-if="showMetadataPanel" class="pl-4 grid grid-cols-[84px_1fr] gap-y-1.5 gap-x-4 text-xs overflow-hidden">
             <!-- Camera -->
             <div class="flex items-center text-[11px] text-base-content/45 h-6">{{ $t('file_info.camera') }}</div>
-            <div class="flex items-center text-[12px] text-base-content/75">{{ formatCameraInfo(fileInfo?.e_make, fileInfo?.e_model) }}</div>
+            <div
+              :class="['flex items-center text-[12px] text-base-content/75', hasCamera ? 'cursor-pointer hover:text-primary' : '']"
+              @click.stop="navigateCamera"
+            >{{ formatCameraInfo(fileInfo?.e_make, fileInfo?.e_model) }}</div>
 
             <!-- Lens -->
             <div class="flex items-center text-[11px] text-base-content/45 h-6">{{ $t('file_info.lens') }}</div>
-            <div class="flex items-center text-[12px] text-base-content/75">{{ fileInfo?.e_lens_model }}</div>
+            <div
+              :class="['flex items-center text-[12px] text-base-content/75', hasLens ? 'cursor-pointer hover:text-primary' : '']"
+              @click.stop="navigateLens"
+            >{{ fileInfo?.e_lens_model }}</div>
 
             <!-- Capture Settings -->
             <div class="flex items-center text-[11px] text-base-content/45 h-6">{{ $t('file_info.capture_settings') }}</div>
@@ -374,7 +396,10 @@
 
             <!-- Geo Location -->
             <div class="flex items-center text-[11px] text-base-content/45 h-6">{{ $t('file_info.geo_location') }}</div>
-            <div class="flex items-center text-[12px] text-base-content/75">{{ formatGeoLocation() }}</div>
+            <div
+              :class="['flex items-center text-[12px] text-base-content/75', hasLocation ? 'cursor-pointer hover:text-primary' : '']"
+              @click.stop="navigateLocation"
+            >{{ formatGeoLocation() }}</div>
           </div>
         </Transition>
       </div>
@@ -430,7 +455,7 @@ import { useToast } from '@/common/toast';
 import { useUIStore } from '@/stores/uiStore';
 import { config } from '@/common/config';
 import { isWebViewVideoPlaybackDisabled } from '@/common/video';
-import { renameFile, editImage, getAlbum, getFileCollections, getFileInfo, revealPath } from '@/common/api';
+import { renameFile, editImage, getAlbum, getFileCollections, getFileInfo, getMotionPhotoVideoPath, revealPath, getFacesForFile, getPersonThumbnail } from '@/common/api';
 import { 
   extractFileName, 
   getFileExtension,
@@ -447,12 +472,12 @@ import {
   combineFileName,
   isValidFileName,
   getAssetSrc,
+  getThumbUrl,
 } from '@/common/utils';
-import { 
+import {
   IconClose,
-  IconRight, 
+  IconRight,
   IconFile,
-  IconEdit,
   IconFolder,
   IconPhoto,
   IconRotate,
@@ -461,6 +486,7 @@ import {
   IconZoomOut,
   IconLivePhoto,
   IconBookmark,
+  IconPerson,
 } from '@/common/icons';
 import Breadcrumb from '@/components/Breadcrumb.vue';
 import TButton from '@/components/TButton.vue';
@@ -475,7 +501,7 @@ const props = defineProps({
   },
 });
 
-const { locale, messages } = useI18n();
+const { locale, messages, t } = useI18n();
 const localeMsg = computed(() => messages.value[locale.value] as any);
 const uiStore = useUIStore();
 
@@ -488,9 +514,12 @@ const emit = defineEmits([
   'setCulling',
   'rotate',
   'quickEditTag',
+  'quickEditCollection',
   'quickEditComment',
   'navigateFolder',
-  'navigateCollection',
+  'openViewer',
+  'navigateMetadata',
+  'navigatePerson',
 ]);
 
 const toast = useToast();
@@ -510,6 +539,7 @@ const isVideoFile = computed(() => Number(props.fileInfo?.file_type || 0) === 2)
 const isLivePhoto = computed(() => (
   props.fileInfo?.media_subtype === 'live_photo' && !!props.fileInfo?.live_photo_video_path
 ));
+const isMotionPhoto = computed(() => props.fileInfo?.media_subtype === 'motion_photo');
 const isRawJpegPair = computed(() => (
   props.fileInfo?.media_subtype === 'raw_jpeg_pair' && !!props.fileInfo?.live_photo_video_id
 ));
@@ -528,11 +558,15 @@ const generalFileInfo = computed(() => (
     : props.fileInfo
 ));
 const isPrimaryGeneralInfo = computed(() => generalInfoTab.value === 'raw');
-const previewVideoPath = computed(() => (
-  isLivePhoto.value ? props.fileInfo?.live_photo_video_path : props.fileInfo?.file_path
-));
+const motionPhotoVideoPath = ref<string | null>(null);
+let motionPhotoVideoRequestSeq = 0;
+const previewVideoPath = computed(() => {
+  if (isLivePhoto.value) return props.fileInfo?.live_photo_video_path;
+  if (isMotionPhoto.value) return motionPhotoVideoPath.value;
+  return props.fileInfo?.file_path;
+});
 const canPreviewVideo = computed(() => (
-  (isVideoFile.value || isLivePhoto.value)
+  (isVideoFile.value || isLivePhoto.value || isMotionPhoto.value)
   && !!previewVideoPath.value
   && !isWebViewVideoPlaybackDisabled(previewVideoPath.value)
 ));
@@ -574,7 +608,10 @@ const previewImageStyle = computed(() => {
 });
 const previewFormatLabel = computed(() => {
   if (props.fileInfo?.media_subtype === 'live_photo') {
-    return 'LIVE';
+    return t('image_viewer.live');
+  }
+  if (props.fileInfo?.media_subtype === 'motion_photo') {
+    return t('image_viewer.motion');
   }
 
   const formatLabel = (props.fileInfo?.format_label || '').trim();
@@ -639,10 +676,31 @@ function stopPreviewVideo() {
 }
 
 watch(
+  () => [props.fileInfo?.id, props.fileInfo?.media_subtype, props.fileInfo?.modified_at] as const,
+  async ([fileId, mediaSubtype]) => {
+    const requestSeq = ++motionPhotoVideoRequestSeq;
+    motionPhotoVideoPath.value = null;
+    if (!fileId || mediaSubtype !== 'motion_photo') return;
+    try {
+      const path = await getMotionPhotoVideoPath(Number(fileId));
+      if (requestSeq === motionPhotoVideoRequestSeq) {
+        motionPhotoVideoPath.value = path;
+      }
+    } catch (error) {
+      if (requestSeq === motionPhotoVideoRequestSeq) {
+        console.error('Failed to prepare motion photo video:', error);
+      }
+    }
+  },
+  { immediate: true },
+);
+
+watch(
   () => [
     props.fileInfo?.id,
     props.fileInfo?.file_path,
     props.fileInfo?.live_photo_video_path,
+    props.fileInfo?.media_subtype,
     showPreviewPanel.value,
     isHistogramPreview.value,
   ],
@@ -744,6 +802,7 @@ const renamingName = ref('');
 const renamingExt = ref('');
 const renameInputRef = ref<HTMLInputElement | null>(null);
 const albumRootPath = ref('');
+const albumCoverUrl = ref('');
 let albumRootRequestSeq = 0;
 
 const generalFolderBreadcrumbs = computed(() => {
@@ -762,11 +821,16 @@ watch(
   async (albumId) => {
     const requestSeq = ++albumRootRequestSeq;
     albumRootPath.value = '';
+    albumCoverUrl.value = '';
     if (!albumId) return;
     const album = await getAlbum(albumId);
     if (requestSeq !== albumRootRequestSeq) return;
     if (props.fileInfo?.album_id !== albumId) return;
     albumRootPath.value = album?.path || '';
+    const coverFileId = Number(album?.cover_file_id || 0);
+    if (coverFileId > 0) {
+      albumCoverUrl.value = getThumbUrl(coverFileId, false, config.settings.thumbnailSize);
+    }
   },
   { immediate: true }
 );
@@ -857,6 +921,73 @@ function formatGeoLocation() {
   ];
 
   return fields.filter(Boolean).join(", ");
+}
+
+// Clickable metadata values: jump to the corresponding sidebar view.
+const hasCamera = computed(() => !!(props.fileInfo?.e_make || props.fileInfo?.e_model));
+const hasLens = computed(() => !!props.fileInfo?.e_lens_model);
+const hasLocation = computed(() => !!(props.fileInfo?.geo_cc || props.fileInfo?.geo_admin1 || props.fileInfo?.geo_name));
+
+function navigateCamera() {
+  if (!hasCamera.value) return;
+  emit('navigateMetadata', { type: 'camera', make: props.fileInfo?.e_make || null, model: props.fileInfo?.e_model || null });
+}
+
+function navigateLens() {
+  if (!hasLens.value) return;
+  emit('navigateMetadata', { type: 'lens', lensMake: props.fileInfo?.e_lens_make || null, lensModel: props.fileInfo?.e_lens_model || null });
+}
+
+function navigateLocation() {
+  if (!hasLocation.value) return;
+  emit('navigateMetadata', { type: 'location', cc: props.fileInfo?.geo_cc || null, admin1: props.fileInfo?.geo_admin1 || null, name: props.fileInfo?.geo_name || null });
+}
+
+// People recognized in this file (deduplicated by person id).
+const filePersons = ref<Array<{ id: number; name: string; thumbnail: string }>>([]);
+let filePersonsRequestSeq = 0;
+
+async function loadFilePersons(fileId: number) {
+  const seq = ++filePersonsRequestSeq;
+  if (!fileId || fileId <= 0) {
+    if (seq === filePersonsRequestSeq) filePersons.value = [];
+    return;
+  }
+  const faces = await getFacesForFile(fileId);
+  if (seq !== filePersonsRequestSeq) return;
+
+  // Dedupe persons by id, keeping the name from the face.
+  const personsById = new Map<number, string>();
+  for (const face of faces || []) {
+    const id = Number(face?.person_id || 0);
+    if (id > 0 && !personsById.has(id)) {
+      personsById.set(id, face?.person_name || '');
+    }
+  }
+  if (personsById.size === 0) {
+    filePersons.value = [];
+    return;
+  }
+
+  // Fetch each person's face thumbnail from the backend (People list is
+  // paginated on the frontend, so we can't rely on locally loaded thumbnails).
+  const persons = await Promise.all(
+    Array.from(personsById.entries()).map(async ([id, name]) => {
+      const thumbnail = (await getPersonThumbnail(id)) || '';
+      return { id, name, thumbnail };
+    }),
+  );
+  if (seq !== filePersonsRequestSeq) return;
+  filePersons.value = persons;
+}
+
+watch(() => props.fileInfo?.id, (id) => {
+  void loadFilePersons(Number(id || 0));
+}, { immediate: true });
+
+function navigatePerson(person: { id: number; name: string }) {
+  if (!person?.id) return;
+  emit('navigatePerson', { personId: person.id, personName: person.name });
 }
 
 const onBeforeEnter = (el: any) => {

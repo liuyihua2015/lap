@@ -46,6 +46,7 @@ export type ShortcutActionId =
   | 'meta.collection'
   | 'meta.comment'
   | 'meta.rotate'
+  | 'meta.rotateCounterclockwise'
   | 'meta.info'
   | 'view.quickPreview'
   | 'view.close'
@@ -53,6 +54,8 @@ export type ShortcutActionId =
   | 'view.previous'
   | 'view.first'
   | 'view.last'
+  | 'view.pageUp'
+  | 'view.pageDown'
   | 'view.zoomIn'
   | 'view.zoomOut'
   | 'view.zoomInDirectional'
@@ -324,7 +327,12 @@ export const SHORTCUTS: readonly ShortcutDefinition[] = [
   {
     id: 'meta.rotate',
     contexts: ['content', 'media-viewer', 'image-viewer'],
-    defaultBindings: [{ code: 'KeyR', allowShift: true, label: 'R' }],
+    defaultBindings: [{ code: 'KeyR', label: 'R' }],
+  },
+  {
+    id: 'meta.rotateCounterclockwise',
+    contexts: ['content', 'media-viewer', 'image-viewer'],
+    defaultBindings: [{ code: 'KeyR', modifiers: ['shift'], label: { mac: '⇧R', windows: 'Shift+R', linux: 'Shift+R' } }],
   },
   {
     id: 'meta.info',
@@ -373,6 +381,16 @@ export const SHORTCUTS: readonly ShortcutDefinition[] = [
       { key: 'ArrowDown', modifiers: ['meta'], platforms: ['mac'], label: { mac: '⌘↓' } },
       { key: 'End', platforms: ['windows', 'linux'], label: { windows: 'End', linux: 'End' } },
     ],
+  },
+  {
+    id: 'view.pageUp',
+    contexts: ['content'],
+    defaultBindings: [{ key: 'PageUp', label: { mac: 'Fn↑', windows: 'PgUp', linux: 'PgUp' } }],
+  },
+  {
+    id: 'view.pageDown',
+    contexts: ['content'],
+    defaultBindings: [{ key: 'PageDown', label: { mac: 'Fn↓', windows: 'PgDn', linux: 'PgDn' } }],
   },
   {
     id: 'view.zoomIn',

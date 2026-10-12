@@ -8,7 +8,7 @@
       </div>
       <div class="flex flex-col text-left">
         <h3 class="text-xl">{{ packageInfo.name }}</h3>
-        <p class="mt-2">{{ $t('settings.about.package.app_description') }}</p>
+        <p class="mt-2 text-sm">{{ $t('settings.about.package.app_description') }}</p>
       </div>
     </div>
 

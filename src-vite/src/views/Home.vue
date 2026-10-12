@@ -18,7 +18,7 @@
 
       <!-- left pane -->
       <div
-        v-if="config.leftPanel.show && !uiStore.isFullScreen"
+        v-if="!uiStore.isFullScreen"
         ref="leftPanelRootRef"
         tabindex="-1"
         :class="[
@@ -100,7 +100,7 @@
 
           <!-- panel-->
           <div
-            v-if="leftPanelMounted"
+            v-if="leftPanelMounted || libraryEmpty"
             class="absolute inset-y-0 left-16 pt-10 px-1 border-l border-base-content/5 flex flex-col overflow-hidden transition-[transform,opacity] duration-200 ease-in-out"
             :class="leftPanelVisualExpanded ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 pointer-events-none'"
             :style="{ width: `calc(${Number(config.leftPanel.width || 260) / 16}rem - 4rem)` }"
@@ -142,8 +142,8 @@
       <div v-if="!uiStore.isFullScreen"
         class="w-1 transition-colors shrink-0"
         :class="{
-          'hover:bg-primary cursor-col-resize': config.leftPanel.show && leftPanelLayoutExpanded,
-          'bg-primary': config.leftPanel.show && leftPanelLayoutExpanded && isDraggingSplitter,
+          'hover:bg-primary cursor-col-resize': leftPanelLayoutExpanded,
+          'bg-primary': leftPanelLayoutExpanded && isDraggingSplitter,
         }" 
         @mousedown="startDraggingSplitter"
         @mouseup="stopDraggingSplitter"
@@ -156,7 +156,6 @@
           showDesktopTitleBar ? 'rounded-tl-box' : '',
         ]"
       >
-        <!-- <MapHeatmapView v-if="config.main.sidebarIndex === SIDEBAR.MAP" /> -->
         <Content ref="contentRef" :key="libraryVersion" :titlebar="activeSidebarButton.text" :libraryEmpty="libraryEmpty"/>
       </div>
     </div>
@@ -202,7 +201,6 @@ import Calendar from '@/components/Calendar.vue';
 import Location from '@/components/Location.vue';
 import Person from '@/components/Person.vue';
 import Camera from '@/components/Camera.vue';
-// import MapHeatmapView from '@/components/MapHeatmapView.vue';
 
 import TitleBar from '@/components/TitleBar.vue';
 import TButton from '@/components/TButton.vue';
@@ -233,7 +231,7 @@ const libraryEmpty = ref(false);
 
 const checkLibraryEmpty = async () => {
   try {
-    const albums = await invoke<any[]>('get_all_albums');
+    const albums = await invoke<any[]>('get_all_albums', { refreshAccessibility: false });
     libraryEmpty.value = (albums?.length ?? 0) === 0;
     if (libraryEmpty.value) {
       config.main.sidebarIndex = SIDEBAR.ALBUM;
@@ -255,7 +253,10 @@ const uiStore = useUIStore();
 const panelRef = ref<any>(null);
 const contentRef = ref<any>(null);
 const leftPanelRootRef = ref<HTMLElement | null>(null);
-const showPanel = ref(true);
+const showPanel = computed({
+  get: () => config.leftPanel.show,
+  set: (value: boolean) => { config.leftPanel.show = value; },
+});
 const LEFT_PANEL_ANIMATION_MS = 200;
 const leftPanelMounted = ref(showPanel.value);
 const leftPanelVisualExpanded = ref(showPanel.value);
@@ -362,7 +363,6 @@ const buttons = computed(() =>  [
   { index: SIDEBAR.PERSON, icon: IconPerson, component: Person, text: localeMsg.value.sidebar.people, hidden: !config.settings.face.enabled },
   { index: SIDEBAR.LOCATION, icon: IconLocation, component: Location, text: localeMsg.value.sidebar.location },
   { index: SIDEBAR.CAMERA, icon: IconCamera, component: Camera, text: localeMsg.value.sidebar.camera },
-  // { icon: IconMapDefault, component: null, text: localeMsg.value.sidebar.map },
 ]);
 
 const activeSidebarButton = computed(() =>
@@ -430,7 +430,7 @@ onMounted(async () => {
     void clickSettings();
   });
   unlistenOpenAbout = await listen('app-open-about', () => {
-    void clickSettings(5);
+    void clickSettings(7);
   });
 
   appConfig.value = await getAppConfig();
@@ -439,7 +439,6 @@ onMounted(async () => {
 
   unlistenAddAlbumRequested = await listen('add-album-requested', async () => {
     if (config.main.sidebarIndex !== SIDEBAR.ALBUM) config.main.sidebarIndex = SIDEBAR.ALBUM;
-    showPanel.value = true;
     await nextTick();
     (panelRef.value as any)?.clickNewAlbum?.();
   });
@@ -528,9 +527,7 @@ function handleHomeKeyDown(event: KeyboardEvent) {
 
   event.preventDefault();
   event.stopPropagation();
-  if (!libraryEmpty.value) {
-    showPanel.value = !showPanel.value;
-  }
+  showPanel.value = !showPanel.value;
 }
 
 const doSwitchLibrary = async (libraryId: string) => {
@@ -597,12 +594,6 @@ const onManageLibrariesUpdated = async () => {
 function clickSidebar(index: number) {
   activateMainPanel();
   if (libraryEmpty.value && index !== SIDEBAR.ALBUM) return;
-  if (index === SIDEBAR.MAP) {
-    // map view has no filter panel - give it the full content area
-    showPanel.value = false;
-    config.main.sidebarIndex = index;
-    return;
-  }
   if (config.main.sidebarIndex === index) {
     showPanel.value = !showPanel.value;
   } else {
@@ -617,7 +608,7 @@ function activateMainPanel() {
 
 // Dragging the splitter
 function startDraggingSplitter(event: MouseEvent) {
-  if(!config.leftPanel.show || !leftPanelLayoutExpanded.value) return; // no expanded left pane
+  if(!leftPanelLayoutExpanded.value) return; // no expanded left pane
 
   isDraggingSplitter.value = true;
   document.addEventListener('mousemove', handleMouseMove);
@@ -687,17 +678,34 @@ async function clickSettings(tabIndex?: number) {
     await emit('settings-settingsTabIndex-changed', tabIndex);
   }
 
-  // check if the settings window is already open
-  const settingsWindow = await WebviewWindow.getByLabel('settings');
+  // Reuse an existing settings window if it can be shown; otherwise destroy it
+  // and create a fresh one. Re-showing a closed transparent window can fail
+  // silently on Windows, so never swallow the failure.
+  let settingsWindow: WebviewWindow | null = null;
+  try {
+    settingsWindow = await WebviewWindow.getByLabel('settings');
+  } catch (error) {
+    console.error('Failed to look up settings window:', error);
+  }
+
   if (settingsWindow) {
-    if (isWin && await settingsWindow.isMinimized()) {
-      await settingsWindow.unminimize();
+    try {
+      if (isWin && await settingsWindow.isMinimized()) {
+        await settingsWindow.unminimize();
+      }
+      await settingsWindow.show();
+      if (isWin) {
+        await settingsWindow.setFocus();
+      }
+      return;
+    } catch (error) {
+      console.error('Failed to show existing settings window, recreating:', error);
+      try {
+        await settingsWindow.destroy();
+      } catch (destroyError) {
+        console.error('Failed to destroy stale settings window:', destroyError);
+      }
     }
-    await settingsWindow.show();
-    if (isWin) {
-      await settingsWindow.setFocus();
-    }
-    return;
   }
 
   const options: any = {
@@ -724,11 +732,6 @@ async function clickSettings(tabIndex?: number) {
   
   newSettingsWindow.once('tauri://created', () => {
     console.log('settings window created');
-  });
-
-  newSettingsWindow.once('tauri://close-requested', () => {
-    newSettingsWindow.close();
-    console.log('settings window closed');
   });
 }
 

@@ -174,6 +174,37 @@ pub(crate) fn rollback_rename_changes(
 // AAE sidecar helpers
 // ---------------------------------------------------------------------------
 
+/// Import-local cache; successful copies update an already scanned directory.
+#[derive(Default)]
+pub(crate) struct ImportAaeCache(HashMap<PathBuf, Vec<PathBuf>>);
+
+impl ImportAaeCache {
+    pub(crate) fn paths(&mut self, path: &Path) -> Vec<PathBuf> {
+        let Some(parent) = path.parent() else { return Vec::new(); };
+        let entries = self.0.entry(parent.to_path_buf()).or_insert_with(|| {
+            fs::read_dir(parent).into_iter().flatten().filter_map(Result::ok)
+                .map(|entry| entry.path()).filter(|p| p.is_file() && p.extension()
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("aae"))).collect()
+        });
+        let stem = format!("{}.aae", path.file_stem().unwrap_or_default().to_string_lossy());
+        let full = format!("{}.aae", path.file_name().unwrap_or_default().to_string_lossy());
+        let mut matches: Vec<_> = entries.iter().filter(|p| p.file_name().is_some_and(|name| {
+            let name = name.to_string_lossy();
+            name.eq_ignore_ascii_case(&stem) || name.eq_ignore_ascii_case(&full)
+        })).cloned().collect();
+        matches.sort();
+        matches
+    }
+
+    pub(crate) fn record(&mut self, paths: &[PathBuf]) {
+        for path in paths {
+            if let Some(entries) = path.parent().and_then(|parent| self.0.get_mut(parent)) {
+                if !entries.contains(path) { entries.push(path.clone()); }
+            }
+        }
+    }
+}
+
 pub(crate) fn apple_aae_sidecar_paths(file_path: &str) -> Vec<PathBuf> {
     let path = Path::new(file_path);
     let Some(parent) = path.parent() else {
@@ -228,6 +259,53 @@ pub(crate) fn delete_apple_aae_sidecars(file_path: &str, permanently: bool) -> R
         }
     }
     Ok(())
+}
+
+/// Copy Apple edit sidecars alongside an imported file. The destination file
+/// name may have received a conflict suffix, so derive each sidecar name from
+/// the final destination rather than copying its source name verbatim.
+pub(crate) fn copy_apple_aae_paths_for_import(
+    source_file_path: &str,
+    destination_file_path: &str,
+    sidecars: Vec<PathBuf>,
+) -> Result<Vec<PathBuf>, String> {
+    let source = Path::new(source_file_path);
+    let destination = Path::new(destination_file_path);
+    let mut copied = Vec::new();
+
+    for sidecar in sidecars {
+        let Some(name) = build_aae_transfer_target_name(
+            source,
+            &sidecar,
+            destination.file_name().and_then(|name| name.to_str()).ok_or_else(|| {
+                format!("Invalid import destination: {}", destination.display())
+            })?,
+            destination.file_stem().and_then(|stem| stem.to_str()).ok_or_else(|| {
+                format!("Invalid import destination: {}", destination.display())
+            })?,
+        ) else {
+            continue;
+        };
+        let target = destination
+            .parent()
+            .ok_or_else(|| format!("Invalid import destination: {}", destination.display()))?
+            .join(name);
+        if target.exists() {
+            for copied_path in copied {
+                let _ = fs::remove_file(copied_path);
+            }
+            return Err(format!("Destination sidecar already exists: {}", target.display()));
+        }
+        if let Err(error) = fs::copy(&sidecar, &target) {
+            for copied_path in copied {
+                let _ = fs::remove_file(copied_path);
+            }
+            return Err(format!("Failed to copy sidecar '{}': {}", sidecar.display(), error));
+        }
+        copied.push(target);
+    }
+
+    Ok(copied)
 }
 
 // ---------------------------------------------------------------------------

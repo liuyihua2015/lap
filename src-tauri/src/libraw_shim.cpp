@@ -127,11 +127,6 @@ int lap_libraw_get_meta(libraw_data_t *raw, LapLibRawMeta *out) {
     return LIBRAW_UNSPECIFIED_ERROR;
   }
 
-  int ret = libraw_unpack(raw);
-  if (ret != LIBRAW_SUCCESS) {
-    return ret;
-  }
-
   std::memset(out, 0, sizeof(*out));
 
   // Camera info

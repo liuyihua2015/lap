@@ -1,14 +1,21 @@
 <template>
   <div class="absolute inset-0 flex items-center justify-center px-6" data-tauri-drag-region>
+    <select
+      v-model="config.settings.language"
+      class="select select-bordered select-sm absolute top-4 right-6 w-auto"
+      :aria-label="$t('settings.general.select_language')"
+    >
+      <option v-for="lang in languages" :key="lang.value" :value="lang.value">{{ lang.label }}</option>
+    </select>
     <div class="max-w-3xl w-full text-center">
       <div class="mb-8 flex flex-col items-center gap-3">
         <img :src="iconLogo" class="w-32 h-32 select-none" draggable="false" />
         <div>
           <h2 class="text-xl font-semibold text-base-content/70">
-            {{ $t('welcome.title') }}
+            {{ appName }}
           </h2>
           <p class="mt-2 text-sm text-base-content/30">
-            {{ $t('welcome.description') }}
+            {{ $t('settings.about.package.app_description') }}
           </p>
         </div>
       </div>
@@ -39,9 +46,36 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted } from 'vue';
 import { emit as tauriEmit } from '@tauri-apps/api/event';
+import { getPackageInfo } from '@/common/api';
 import { IconAdd, IconBookmark, IconFolderCog, IconFolders } from '@/common/icons';
 import iconLogo from '@/assets/images/icon.png';
+import { useConfigStore } from '@/stores/configStore';
+
+const config = useConfigStore();
+const appName = ref('');
+
+onMounted(async () => {
+  try {
+    const packageInfo = await getPackageInfo();
+    appName.value = packageInfo.name;
+  } catch (error) {
+    console.error('Failed to load app name:', error);
+  }
+});
+
+const languages = [
+  { label: 'English', value: 'en' },
+  { label: 'Deutsch', value: 'de' },
+  { label: 'Español', value: 'es' },
+  { label: 'Français', value: 'fr' },
+  { label: 'Português', value: 'pt' },
+  { label: 'Русский', value: 'ru' },
+  { label: '中文', value: 'zh' },
+  { label: '日本語', value: 'ja' },
+  { label: '한국어', value: 'ko' },
+];
 
 const requestAddAlbum = () => {
   tauriEmit('add-album-requested');
