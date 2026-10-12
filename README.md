@@ -1,14 +1,17 @@
 <div align="center">
-  <img src="docs/public/icon.png" alt="Lap Logo" width="120" style="border-radius: 20px">
-  <h1>Lap - Private Local Photo Manager</h1>
+  <img src="docs/public/icon.png" alt="Lumi Logo" width="120" style="border-radius: 20px">
+  <h1>Lumi - Private Local Photo Manager</h1>
   <h3>Open-source desktop photo manager for macOS, Windows, and Linux.</h3>
   <p>
-    <a href="https://github.com/julyx10/lap/releases"><img src="https://img.shields.io/github/v/release/julyx10/lap" alt="GitHub release"></a>
-    <a href="https://github.com/julyx10/lap/releases"><img src="https://img.shields.io/github/downloads/julyx10/lap/total" alt="GitHub all releases"></a>
-    <a href="https://github.com/julyx10/lap/stargazers"><img src="https://img.shields.io/github/stars/julyx10/lap" alt="GitHub stars"></a>
+    <a href="https://github.com/liuyihua2015/lap/releases"><img src="https://img.shields.io/github/v/release/liuyihua2015/lap" alt="GitHub release"></a>
+    <a href="https://github.com/liuyihua2015/lap/releases"><img src="https://img.shields.io/github/downloads/liuyihua2015/lap/total" alt="GitHub all releases"></a>
+    <a href="https://github.com/liuyihua2015/lap/stargazers"><img src="https://img.shields.io/github/stars/liuyihua2015/lap" alt="GitHub stars"></a>
   </p>
 </div>
 
+> **Lumi** is a fork of [Lap](https://github.com/julyx10/lap) by [julyx10](https://github.com/julyx10).
+> Original author: **julyx10** · Fork maintainer: **liuyihua2015** · Licensed under GPL-3.0-or-later.
+> Everything below this notice documents the upstream project, which Lumi tracks closely.
 
 English | [Deutsch](i18n/README.de.md) | [Français](i18n/README.fr.md) | [Español](i18n/README.es.md) | [Português](i18n/README.pt.md) | [Русский](i18n/README.ru.md) | [简体中文](i18n/README.zh-CN.md) | [日本語](i18n/README.ja.md) | [한국어](i18n/README.ko.md)
 
@@ -113,10 +116,10 @@ For a manual installation, quit Lap and move `Lap.app` from the `Applications` f
 To remove all Lap database, cache, and configuration files:
 
 ```bash
-rm -rf "$HOME/Library/Application Support/com.julyx10.lap" \
-       "$HOME/Library/Caches/com.julyx10.lap" \
-       "$HOME/Library/WebKit/com.julyx10.lap"
-rm -f "$HOME/Library/Preferences/com.julyx10.lap.plist"
+rm -rf "$HOME/Library/Application Support/com.liuyihua.lumi" \
+       "$HOME/Library/Caches/com.liuyihua.lumi" \
+       "$HOME/Library/WebKit/com.liuyihua.lumi"
+rm -f "$HOME/Library/Preferences/com.liuyihua.lumi.plist"
 ```
 
 ### Windows
@@ -126,8 +129,8 @@ Open **Settings > Apps > Installed apps**, find **Lap**, and select **Uninstall*
 Then open PowerShell and remove all Lap database, cache, and configuration files:
 
 ```powershell
-Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$env:LOCALAPPDATA\com.julyx10.lap"
-Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$env:APPDATA\com.julyx10.lap"
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$env:LOCALAPPDATA\com.liuyihua.lumi"
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$env:APPDATA\com.liuyihua.lumi"
 ```
 
 ### Linux
@@ -141,9 +144,9 @@ sudo apt remove lap
 Then remove all Lap database, cache, and configuration files:
 
 ```bash
-rm -rf "$HOME/.local/share/com.julyx10.lap" \
-       "$HOME/.cache/com.julyx10.lap" \
-       "$HOME/.config/com.julyx10.lap"
+rm -rf "$HOME/.local/share/com.liuyihua.lumi" \
+       "$HOME/.cache/com.liuyihua.lumi" \
+       "$HOME/.config/com.liuyihua.lumi"
 ```
 
 If you selected a custom database storage directory in Lap settings, delete that directory separately after confirming that it contains only Lap database files.
