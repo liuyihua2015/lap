@@ -3,7 +3,7 @@
 version = 4
 
 [[package]]
-name = "Lap"
+name = "Lumi"
 version = "0.3.2"
 dependencies = [
  "arboard",
